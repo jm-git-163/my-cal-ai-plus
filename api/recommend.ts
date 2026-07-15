@@ -160,7 +160,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const overCalories = remaining.calories <= 0
     const lowRemaining = remaining.calories > 0 && remaining.calories < 250
     const justAte = minsSince !== null && minsSince < 90
+    const recentlyAte = minsSince !== null && minsSince < 150
     const lateNight = tod === 'late_night' || tod === 'early_morning'
+    const calorieUsedPct =
+      goals.calories > 0 ? Math.round((eaten.calories / goals.calories) * 100) : 0
+    const nearGoalCalories =
+      remaining.calories > 0 && remaining.calories < Math.max(350, goals.calories * 0.2)
+    /** Prefer water / skip food over another meal */
+    const preferSkipFood =
+      overCalories ||
+      (lateNight && remaining.calories < 450) ||
+      (justAte && mode !== 'gain') ||
+      (mode === 'lose' && recentlyAte && nearGoalCalories) ||
+      (mode === 'lose' && lowRemaining) ||
+      (tod === 'afternoon' && recentlyAte && remaining.calories < 500 && mode !== 'gain')
 
     const payload = {
       name,
@@ -177,14 +190,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         carbs: Math.round(eaten.carbs * 10) / 10,
         fat: Math.round(eaten.fat * 10) / 10,
         meal_count: todayMeals.length,
+        calorie_used_pct: calorieUsedPct,
       },
       remaining_today: remaining,
       context_flags: {
         over_calories: overCalories,
         low_remaining_calories: lowRemaining,
+        near_goal_calories: nearGoalCalories,
         just_ate_within_90min: justAte,
+        recently_ate_within_150min: recentlyAte,
         late_night: lateNight,
         minutes_since_last_meal: minsSince,
+        prefer_skip_food: preferSkipFood,
       },
       recent_meals: todayMeals.slice(0, 8).map((m) => ({
         food: m.food,
@@ -205,27 +222,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(supportsReasoningEffort(model)
         ? { reasoning: { effort: getFastReasoningEffort() } }
         : {}),
-      instructions: `You are My Cal AI Plus meal coach.
-Recommend what to do NEXT based on clock time, remaining macros, weight goal, and recent eating.
+      instructions: `You are My Cal AI Plus next-action coach — NOT a menu generator.
+Decide whether the user should EAT, SNACK, drink WATER, or WAIT (light fasting / skip this snack).
 Be concise. All user-facing strings must be in ${lang}.
 
 Output fields:
-- meal_slot: localized time slot label
-- situation_note: 1 friendly sentence (time + goal + remaining)
+- meal_slot: localized time slot label (아침/점심/저녁/간식 or Breakfast/…)
+- situation_note: 1 honest sentence about NOW (time + remaining + whether waiting is smarter)
 - remaining_note: short leftover kcal/protein line
-- options: 2 or 3 items with kind, title, macros, reason
+- options: 2 or 3 items with kind (meal|snack|hydrate|rest), title, macros, reason
 - tip: one gentle tip
 
-Decision rules:
-1) If over_calories OR (late_night AND remaining calories < 350) OR (just_ate_within_90min AND remaining calories < 400):
-   - Put hydrate or rest FIRST. Optional 1 light snack; no heavy meal.
-2) If low_remaining_calories (<250): hydrate + light snack; avoid large meals.
-3) High protein remaining + calories left → protein-forward option for meal_slot.
-4) weight_goal_mode lose → water/volume/protein; gain → fuller meals within remaining; maintain → balanced.
-5) Match meal_slot / local_hour. Late night → light or hydrate.
-6) Korean → everyday Korean options; English → practical familiar options.
-7) hydrate/rest macros ≈ 0.
-8) Never shaming. Always 2 or 3 options.`,
+Core philosophy:
+- Good coaching often means saying “don’t eat yet” — water + wait is a valid primary recommendation.
+- Prefer skip/wait when prefer_skip_food is true, even if users asked “what to eat”.
+
+Decision rules (follow strictly):
+1) If prefer_skip_food OR over_calories OR just_ate_within_90min OR (late_night AND remaining calories < 450):
+   - FIRST option MUST be kind=hydrate OR kind=rest.
+   - Titles like: "물 한 잔 마시고 30~60분 참기", "간식 건너뛰고 공복 유지", "Drink water and wait", "Skip this snack".
+   - At most ONE light snack as alternative; NO full meal as first choice.
+2) If low_remaining_calories OR near_goal_calories with weight_goal_mode=lose:
+   - Lead with hydrate/rest; optional broth/fruit only if still hungry language is needed.
+3) Else if it is a real meal_slot (아침/점심/저녁) AND calories remaining are ample AND not just_ate:
+   - Normal meal or protein-forward snack is OK first.
+4) weight_goal_mode lose → lean toward water/wait/volume foods; gain → fuller meals when macros allow; maintain → balanced, still allow wait if just ate.
+5) Late night / early morning → hydrate/rest preferred over dinner-like meals.
+6) Korean → everyday phrasing; English → practical phrasing.
+7) hydrate/rest macros must be ≈0.
+8) Never shame. Waiting is framed as helpful, not failure.
+9) Always return 2 or 3 options; when waiting is wise, put wait/water first.`,
       text: {
         format: {
           type: 'json_schema',
@@ -234,7 +260,7 @@ Decision rules:
           schema: recommendSchema,
         },
       },
-      input: `Recommend the next action/meal from this JSON:\n${JSON.stringify(payload)}`,
+      input: `Recommend the next action (eat OR wait/water) from this JSON:\n${JSON.stringify(payload)}`,
     })
 
     for (const item of response.output) {
@@ -285,6 +311,29 @@ Decision rules:
         }
       })
 
+    // Hard guarantee: when skip is wiser, lead with water/wait even if the model forgot.
+    if (preferSkipFood) {
+      const skipFirst = options.find((o) => o.kind === 'hydrate' || o.kind === 'rest')
+      if (skipFirst) {
+        const rest = options.filter((o) => o !== skipFirst)
+        options.splice(0, options.length, skipFirst, ...rest)
+      } else {
+        const ko = lang === 'Korean'
+        options.unshift({
+          kind: 'rest',
+          title: ko ? '물 한 잔 마시고 잠시 공복 유지' : 'Drink water and wait a bit',
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          reason: ko
+            ? '지금은 식사·간식보다 잠깐 참는 편이 목표에 맞아요.'
+            : 'Waiting with water fits your goal better than another snack right now.',
+        })
+        while (options.length > 3) options.pop()
+      }
+    }
+
     if (options.length < 2) {
       return res.status(502).json({ error: 'Not enough recommendation options returned' })
     }
@@ -302,6 +351,7 @@ Decision rules:
         over_calories: overCalories,
         just_ate: justAte,
         late_night: lateNight,
+        prefer_skip_food: preferSkipFood,
       },
       eaten: {
         calories: Math.round(eaten.calories),
