@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { MealType, NutritionResult } from '@/types'
 import { ConfidenceBar } from '@/components/ConfidenceBar'
@@ -6,7 +6,12 @@ import { useI18n } from '@/hooks/useI18n'
 import { analyzeFoodImage, validateImageFile } from '@/services/vision'
 import { useAppStore } from '@/store/useAppStore'
 import { formatConfidence } from '@/utils/nutrition'
-import { guessMealType, preprocessImage, resizeForVision } from '@/utils/preprocess'
+import {
+  guessMealType,
+  preprocessImage,
+  resizeForStorage,
+  resizeForVision,
+} from '@/utils/preprocess'
 
 type Stage = 'idle' | 'preprocessing' | 'analyzing' | 'result' | 'error'
 
@@ -15,6 +20,7 @@ export function ScanPage() {
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
   const addMeal = useAppStore((s) => s.addMeal)
+  const updateMeal = useAppStore((s) => s.updateMeal)
   const settings = useAppStore((s) => s.settings)
 
   const [stage, setStage] = useState<Stage>('idle')
@@ -24,7 +30,17 @@ export function ScanPage() {
   const [mealType, setMealType] = useState<MealType>(guessMealType())
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [savedId, setSavedId] = useState<string | null>(null)
+  const [saveNote, setSaveNote] = useState<string | null>(null)
   const [showDetails, setShowDetails] = useState(false)
+
+  // Keep meal type in sync after auto-save
+  useEffect(() => {
+    if (!savedId) return
+    void updateMeal(savedId, { mealType }).catch(() => {
+      /* ignore transient IDB errors on type tweak */
+    })
+  }, [mealType, savedId, updateMeal])
 
   async function handleFile(file: File) {
     const code = validateImageFile(file)
@@ -41,6 +57,8 @@ export function ScanPage() {
 
     setError(null)
     setResult(null)
+    setSavedId(null)
+    setSaveNote(null)
     setStage('preprocessing')
 
     try {
@@ -52,11 +70,15 @@ export function ScanPage() {
       })
       setPreview(rawUrl)
 
-      const [visionOriginal, enhanced] = await Promise.all([
-        resizeForVision(file, 1536),
-        preprocessImage(file, { maxSize: 1536 }),
-      ])
-      setProcessed(enhanced)
+      // Prefer a single resized JPEG for analysis when preprocess is heavy on phones.
+      const visionOriginal = await resizeForVision(file, 1280, 0.85)
+      let enhanced: string | undefined
+      try {
+        enhanced = await preprocessImage(visionOriginal, { maxSize: 1280 })
+      } catch {
+        enhanced = undefined
+      }
+      setProcessed(enhanced ?? visionOriginal)
 
       setStage('analyzing')
       const nutrition = await analyzeFoodImage({
@@ -67,26 +89,54 @@ export function ScanPage() {
         goalWeightKg: settings.goalWeightKg,
         calorieGoal: settings.goals.calories,
       })
+      const nextType = guessMealType()
       setResult(nutrition)
-      setMealType(guessMealType())
+      setMealType(nextType)
       setStage('result')
+
+      // Auto-save immediately so leaving the page does not lose the meal.
+      const id = crypto.randomUUID()
+      const thumb = await resizeForStorage(enhanced ?? visionOriginal).catch(() => undefined)
+      setSaving(true)
+      try {
+        await addMeal({
+          ...nutrition,
+          id,
+          mealType: nextType,
+          imageDataUrl: thumb,
+          createdAt: new Date().toISOString(),
+        })
+        setSavedId(id)
+        setSaveNote(t.scan.savedAuto)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t.scan.saveFailed)
+      } finally {
+        setSaving(false)
+      }
     } catch (err) {
       setStage('error')
       setError(err instanceof Error ? err.message : t.scan.analysisFailed)
     }
   }
 
-  async function onSave() {
+  async function onSaveAndHome() {
     if (!result) return
+    if (savedId) {
+      navigate('/')
+      return
+    }
     setSaving(true)
     try {
+      const thumb = await resizeForStorage(processed ?? preview ?? '').catch(() => undefined)
+      const id = crypto.randomUUID()
       await addMeal({
         ...result,
-        id: crypto.randomUUID(),
+        id,
         mealType,
-        imageDataUrl: processed ?? preview ?? undefined,
+        imageDataUrl: thumb,
         createdAt: new Date().toISOString(),
       })
+      setSavedId(id)
       navigate('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : t.scan.saveFailed)
@@ -101,6 +151,8 @@ export function ScanPage() {
     setProcessed(null)
     setResult(null)
     setError(null)
+    setSavedId(null)
+    setSaveNote(null)
     if (inputRef.current) inputRef.current.value = ''
   }
 
@@ -120,6 +172,14 @@ export function ScanPage() {
         ? t.scan.goalCaution
         : t.scan.goalNeutral
 
+  const primaryLabel = savedId
+    ? saving
+      ? t.scan.saving
+      : t.scan.goHome
+    : saving
+      ? t.scan.saving
+      : t.scan.saveQuick
+
   return (
     <div className="mx-auto w-full max-w-2xl space-y-4 md:max-w-3xl md:space-y-5 pb-24 md:pb-0">
       <div>
@@ -133,7 +193,7 @@ export function ScanPage() {
         <input
           ref={inputRef}
           type="file"
-          accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+          accept="image/*,image/jpeg,image/png,image/webp,image/heic,image/heif"
           capture="environment"
           className="hidden"
           onChange={(e) => {
@@ -188,6 +248,12 @@ export function ScanPage() {
         {error && (
           <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
             {error}
+          </div>
+        )}
+
+        {saveNote && !error && (
+          <div className="rounded-2xl border border-brand-green/25 bg-brand-green-soft/70 px-4 py-3 text-sm text-brand-green dark:bg-brand-green/15">
+            {saveNote}
           </div>
         )}
 
@@ -279,8 +345,13 @@ export function ScanPage() {
             )}
 
             <div className="hidden gap-2 md:flex">
-              <button type="button" className="btn-primary flex-1" disabled={saving} onClick={() => void onSave()}>
-                {saving ? t.scan.saving : t.scan.save}
+              <button
+                type="button"
+                className="btn-primary flex-1"
+                disabled={saving}
+                onClick={() => void onSaveAndHome()}
+              >
+                {primaryLabel}
               </button>
               <button type="button" className="btn-secondary" onClick={reset}>
                 {t.scan.scanAnother}
@@ -296,15 +367,19 @@ export function ScanPage() {
         )}
       </div>
 
-      {/* Mobile sticky save bar */}
       {result && stage === 'result' && (
         <div className="fixed inset-x-0 bottom-[4.75rem] z-30 border-t border-brand-ink/10 bg-[#EEF3F0]/95 px-4 py-3 shadow-[0_-4px_16px_rgba(18,21,28,0.06)] backdrop-blur-xl dark:border-white/10 dark:bg-[#10161c]/95 md:hidden safe-bottom">
           <div className="mx-auto flex max-w-lg gap-2">
             <button type="button" className="btn-secondary" onClick={reset}>
               {t.scan.scanAnother}
             </button>
-            <button type="button" className="btn-primary flex-1" disabled={saving} onClick={() => void onSave()}>
-              {saving ? t.scan.saving : t.scan.saveQuick}
+            <button
+              type="button"
+              className="btn-primary flex-1"
+              disabled={saving}
+              onClick={() => void onSaveAndHome()}
+            >
+              {primaryLabel}
             </button>
           </div>
         </div>

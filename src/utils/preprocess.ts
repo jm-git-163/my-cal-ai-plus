@@ -120,6 +120,7 @@ export async function preprocessImage(
 export async function resizeForVision(
   fileOrDataUrl: File | string,
   maxSize = 1536,
+  quality = 0.9,
 ): Promise<string> {
   const src =
     typeof fileOrDataUrl === 'string'
@@ -142,7 +143,12 @@ export async function resizeForVision(
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('Canvas not supported')
   ctx.drawImage(img, 0, 0, width, height)
-  return canvas.toDataURL('image/jpeg', 0.9)
+  return canvas.toDataURL('image/jpeg', quality)
+}
+
+/** Small JPEG for IndexedDB meal thumbnails (avoids QuotaExceeded on mobile). */
+export async function resizeForStorage(fileOrDataUrl: File | string): Promise<string> {
+  return resizeForVision(fileOrDataUrl, 720, 0.72)
 }
 
 export function guessMealType(date = new Date()): import('@/types').MealType {

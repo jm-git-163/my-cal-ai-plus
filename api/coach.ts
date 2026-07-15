@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getModel, getOpenAI } from '../lib/openai.js'
+import { getFastModel, getFastReasoningEffort, getOpenAI } from '../lib/openai.js'
 
 const coachSchema = {
   type: 'object',
@@ -124,7 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       goalWeightKg?: number
     }
 
-    const meals = Array.isArray(body.meals) ? body.meals.slice(0, 40) : []
+    const meals = Array.isArray(body.meals) ? body.meals.slice(0, 20) : []
     const goals = body.goals ?? {}
     const lang = body.locale === 'en' ? 'English' : 'Korean'
     const name = body.name || 'User'
@@ -133,7 +133,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const goalWeightKg = body.goalWeightKg
 
     const client = getOpenAI()
-    const model = getModel()
+    const model = getFastModel()
+    const reasoningEffort = getFastReasoningEffort()
 
     const calorieGap =
       goals.calories && trend.days_logged > 0 ? trend.avg_daily_calories - goals.calories : null
@@ -162,8 +163,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const response = await client.responses.create({
       model,
+      reasoning: { effort: reasoningEffort },
       instructions: `You are My Cal AI Plus fitness & nutrition coach.
 Analyze logged meals vs daily goals and project what happens IF the user continues this eating pattern.
+Be concise — short strings, no fluff.
 
 Output requirements (all user-facing strings in ${lang}):
 - summary: 1 sentence snapshot
@@ -171,17 +174,16 @@ Output requirements (all user-facing strings in ${lang}):
 - focus: 2-4 short tags
 - score: 0-100 nutrition quality vs goals
 - predicted_goal_note: encouraging progress note
-- weight_trend: direction lose|gain|maintain, estimate_4w (e.g. "-0.8~-1.2 kg / 4 weeks" or English equivalent), explanation
-- muscle_trend: direction increase|decrease|maintain (protein + surplus/deficit based strength/muscle capacity outlook), estimate_4w, explanation
+- weight_trend: direction lose|gain|maintain, estimate_4w (e.g. "-0.8~-1.2 kg / 4 weeks"), explanation
+- muscle_trend: direction increase|decrease|maintain, estimate_4w, explanation
 - energy_trend: direction up|down|stable, explanation
-- outlook_2w / outlook_4w / outlook_8w: concise what-if projections for 2/4/8 weeks if trend continues
-- disclaimer: short note that this is an estimate, not medical advice, individuals vary
+- outlook_2w / outlook_4w / outlook_8w: concise what-if projections if trend continues
+- disclaimer: short note that this is an estimate, not medical advice
 
 Rules:
-- Use currentWeightKg vs goalWeightKg: if goal < current prefer calorie deficit & protein preservation; if goal > current prefer surplus + protein for muscle capacity.
-- Use trend.avg_daily_calories vs goals.calories for weight bias (~7700 kcal ≈ 1 kg as rough heuristic; keep ranges, not false precision).
-- Use protein vs goals.protein and calorie balance for muscle outlook (protein surplus without stimulus ≠ guaranteed muscle; say "capacity" language).
-- If meals empty or days_logged < 2, be conservative, lower confidence in tone, and coach starting habits.
+- Use currentWeightKg vs goalWeightKg and avg calories vs goals for weight bias (~7700 kcal ≈ 1 kg rough heuristic; keep ranges).
+- Use protein vs goals for muscle "capacity" language.
+- If meals empty or days_logged < 2, be conservative.
 - Do NOT claim guaranteed body changes.`,
       text: {
         format: {

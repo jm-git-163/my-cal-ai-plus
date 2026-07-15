@@ -10,6 +10,7 @@ interface AppState {
   hydrated: boolean
   hydrate: () => Promise<void>
   addMeal: (meal: MealEntry) => Promise<void>
+  updateMeal: (id: string, patch: Partial<Omit<MealEntry, 'id'>>) => Promise<void>
   removeMeal: (id: string) => Promise<void>
   updateSettings: (settings: UserSettings) => Promise<void>
   setLocale: (locale: Locale) => Promise<void>
@@ -28,30 +29,42 @@ export const useAppStore = create<AppState>((set, get) => ({
   hydrated: false,
 
   hydrate: async () => {
-    const [meals, settings] = await Promise.all([db.getAllMeals(), db.getSettings()])
-    let normalized = normalizeSettings(settings)
-
-    // One-time product default: dark. Light choosers can switch back after.
     try {
-      const flag = 'calai.themeDefaultDark.v1'
-      if (!localStorage.getItem(flag)) {
-        localStorage.setItem(flag, '1')
-        if (normalized.theme !== 'dark') {
-          normalized = { ...normalized, theme: 'dark' }
-          await db.saveSettings(normalized)
-        }
-      }
-    } catch {
-      /* ignore */
-    }
+      const [meals, settings] = await Promise.all([db.getAllMeals(), db.getSettings()])
+      let normalized = normalizeSettings(settings)
 
-    applyDocumentPrefs(normalized)
-    set({ meals, settings: normalized, hydrated: true })
+      // One-time product default: dark. Light choosers can switch back after.
+      try {
+        const flag = 'calai.themeDefaultDark.v1'
+        if (!localStorage.getItem(flag)) {
+          localStorage.setItem(flag, '1')
+          if (normalized.theme !== 'dark') {
+            normalized = { ...normalized, theme: 'dark' }
+            await db.saveSettings(normalized)
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+
+      applyDocumentPrefs(normalized)
+      set({ meals, settings: normalized, hydrated: true })
+    } catch (err) {
+      console.error('[calai] hydrate failed', err)
+      applyDocumentPrefs(DEFAULT_SETTINGS)
+      set({ meals: [], settings: DEFAULT_SETTINGS, hydrated: true })
+    }
   },
 
   addMeal: async (meal) => {
-    await db.addMeal(meal)
-    set({ meals: [meal, ...get().meals] })
+    const saved = await db.addMeal(meal)
+    set({ meals: [saved, ...get().meals.filter((m) => m.id !== saved.id)] })
+  },
+
+  updateMeal: async (id, patch) => {
+    const next = await db.updateMeal(id, patch)
+    if (!next) return
+    set({ meals: get().meals.map((m) => (m.id === id ? next : m)) })
   },
 
   removeMeal: async (id) => {

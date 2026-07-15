@@ -27,9 +27,19 @@ function getDb() {
         meals.createIndex('by-date', 'createdAt')
         db.createObjectStore('settings')
       },
+    }).catch((err) => {
+      dbPromise = null
+      throw err
     })
   }
   return dbPromise
+}
+
+function isQuotaError(err: unknown) {
+  return (
+    err instanceof DOMException &&
+    (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED')
+  )
 }
 
 export async function getAllMeals(): Promise<MealEntry[]> {
@@ -40,9 +50,32 @@ export async function getAllMeals(): Promise<MealEntry[]> {
   )
 }
 
-export async function addMeal(meal: MealEntry): Promise<void> {
+/** Persist meal; on QuotaExceeded retry once without the photo. */
+export async function addMeal(meal: MealEntry): Promise<MealEntry> {
   const db = await getDb()
-  await db.put('meals', meal)
+  try {
+    await db.put('meals', meal)
+    return meal
+  } catch (err) {
+    if (isQuotaError(err) && meal.imageDataUrl) {
+      const slim = { ...meal, imageDataUrl: undefined }
+      await db.put('meals', slim)
+      return slim
+    }
+    throw err
+  }
+}
+
+export async function updateMeal(
+  id: string,
+  patch: Partial<Omit<MealEntry, 'id'>>,
+): Promise<MealEntry | null> {
+  const db = await getDb()
+  const existing = await db.get('meals', id)
+  if (!existing) return null
+  const next = { ...existing, ...patch, id }
+  await db.put('meals', next)
+  return next
 }
 
 export async function deleteMeal(id: string): Promise<void> {

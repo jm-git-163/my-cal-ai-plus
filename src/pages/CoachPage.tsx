@@ -73,7 +73,7 @@ export function CoachPage() {
     setStaleLocale(false)
     try {
       const result = await fetchCoachAdvice({
-        meals,
+        meals: meals.slice(0, 20),
         goals: settings.goals,
         locale,
         name: settings.name,
@@ -95,7 +95,7 @@ export function CoachPage() {
     setError(null)
     try {
       const result = await fetchMealRecommendations({
-        meals,
+        meals: meals.slice(0, 16),
         goals: settings.goals,
         locale,
         name: settings.name,

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getModel, getOpenAI } from '../lib/openai.js'
+import { getFastModel, getFastReasoningEffort, getOpenAI } from '../lib/openai.js'
 
 const OPTION_KINDS = ['meal', 'snack', 'hydrate', 'rest'] as const
 
@@ -193,38 +193,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const client = getOpenAI()
-    const model = getModel()
+    const model = getFastModel()
+    const reasoningEffort = getFastReasoningEffort()
 
     const response = await client.responses.create({
       model,
+      reasoning: { effort: reasoningEffort },
       instructions: `You are My Cal AI Plus meal coach.
-Recommend what to do NEXT based on clock time, remaining macros, weight goal, and recent eating — not a generic menu list.
-
-All user-facing strings must be in ${lang}.
+Recommend what to do NEXT based on clock time, remaining macros, weight goal, and recent eating.
+Be concise. All user-facing strings must be in ${lang}.
 
 Output fields:
-- meal_slot: localized time slot label (아침/점심/저녁/간식 or Breakfast/…)
-- situation_note: 1 friendly sentence describing the situation right now (time + goal + remaining). Example vibes: "It's late and you're near your calorie goal — water is wiser than another snack."
-- remaining_note: short line about leftover kcal/protein today
-- options: 2 or 3 items. Each has:
-  - kind: meal | snack | hydrate | rest
-  - title: concrete action or dish name
-  - calories, protein, carbs, fat (numbers; use 0 for hydrate/rest with just water/tea)
-  - reason: one line why this fits NOW
-- tip: one gentle coaching tip
+- meal_slot: localized time slot label
+- situation_note: 1 friendly sentence (time + goal + remaining)
+- remaining_note: short leftover kcal/protein line
+- options: 2 or 3 items with kind, title, macros, reason
+- tip: one gentle tip
 
-Decision rules (follow closely):
+Decision rules:
 1) If over_calories OR (late_night AND remaining calories < 350) OR (just_ate_within_90min AND remaining calories < 400):
-   - Put a hydrate or rest option FIRST (kind=hydrate or rest). Titles like "물 한 잔 마시고 잠시 쉬기", "Drink water and skip food for now".
-   - You may still add 1 light snack option as an alternative, but do NOT push a heavy meal.
-2) If low_remaining_calories (<250): prefer hydrate + light snack / broth; avoid large meals.
-3) If protein remaining is high and calories remain: prioritize protein-forward meals/snacks timed for this meal_slot.
-4) weight_goal_mode lose → favor water, volume foods, protein, controlled carbs; gain → allow fuller meals within remaining; maintain → balanced.
-5) Match meal_slot and local_hour: morning = breakfast-like; lunch/evening = proper meals if macros allow; late_night = light or hydrate.
-6) Korean locale → familiar Korean dishes / everyday options; English → familiar practical options.
-7) kind=hydrate/rest must have calories≈0 and macros≈0.
-8) Be kind, never shaming. Estimates only, not medical advice.
-9) Always return 2 or 3 options.`,
+   - Put hydrate or rest FIRST. Optional 1 light snack; no heavy meal.
+2) If low_remaining_calories (<250): hydrate + light snack; avoid large meals.
+3) High protein remaining + calories left → protein-forward option for meal_slot.
+4) weight_goal_mode lose → water/volume/protein; gain → fuller meals within remaining; maintain → balanced.
+5) Match meal_slot / local_hour. Late night → light or hydrate.
+6) Korean → everyday Korean options; English → practical familiar options.
+7) hydrate/rest macros ≈ 0.
+8) Never shaming. Always 2 or 3 options.`,
       text: {
         format: {
           type: 'json_schema',

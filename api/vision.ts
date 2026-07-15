@@ -155,8 +155,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       calorieGoal?: number
     }
 
+    // Single-pass + first image only — dual high-detail passes were too slow on mobile.
     const detail = 'high' as VisionDetail
-    const twoPass = true
+    const twoPass = false
     const lang = body.locale === 'en' ? 'English' : 'Korean'
     const model = getModel()
     const mode = weightMode(body.currentWeightKg, body.goalWeightKg)
@@ -169,7 +170,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const unique: string[] = []
     for (const url of candidates) {
       if (!unique.includes(url)) unique.push(url)
-      if (unique.length >= 2) break
+      if (unique.length >= 1) break
     }
 
     if (unique.length === 0) {
