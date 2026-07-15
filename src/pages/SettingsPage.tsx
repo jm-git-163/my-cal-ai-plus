@@ -146,18 +146,8 @@ export function SettingsPage() {
         </div>
         <div>
           <p className="mb-2 text-sm font-medium text-brand-ink dark:text-white">{t.theme}</p>
+          <p className="mb-2 text-xs text-brand-muted dark:text-white/45">{t.settings.themeHint}</p>
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => void setTheme('light')}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-                settings.theme === 'light'
-                  ? 'bg-brand-green text-white'
-                  : 'bg-black/5 text-brand-ink dark:bg-white/10 dark:text-white'
-              }`}
-            >
-              {t.themeLight}
-            </button>
             <button
               type="button"
               onClick={() => void setTheme('dark')}
@@ -168,6 +158,17 @@ export function SettingsPage() {
               }`}
             >
               {t.themeDark}
+            </button>
+            <button
+              type="button"
+              onClick={() => void setTheme('light')}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                settings.theme === 'light'
+                  ? 'bg-brand-green text-white'
+                  : 'bg-black/5 text-brand-ink dark:bg-white/10 dark:text-white'
+              }`}
+            >
+              {t.themeLight}
             </button>
           </div>
         </div>

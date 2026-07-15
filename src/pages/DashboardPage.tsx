@@ -45,7 +45,8 @@ export function DashboardPage() {
 
       <section>
         <div className="glass-card relative overflow-hidden p-5 sm:p-7">
-          <div className="pointer-events-none absolute -right-10 -top-12 h-44 w-44 rounded-full bg-brand-green/20 blur-3xl" />
+          <div className="pointer-events-none absolute -right-10 -top-12 h-44 w-44 rounded-full bg-brand-green/25 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-16 -left-8 h-40 w-40 rounded-full bg-brand-orange/15 blur-3xl dark:opacity-40" />
           <p className="text-sm font-medium text-brand-muted dark:text-white/50">{t.dashboard.calories}</p>
           <div className="mt-1 flex flex-wrap items-end gap-x-2 gap-y-1">
             <p className="tabular font-display text-5xl font-bold tracking-[-0.045em] text-brand-ink dark:text-white sm:text-6xl lg:text-7xl">

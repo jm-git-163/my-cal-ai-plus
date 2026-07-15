@@ -29,7 +29,22 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   hydrate: async () => {
     const [meals, settings] = await Promise.all([db.getAllMeals(), db.getSettings()])
-    const normalized = normalizeSettings(settings)
+    let normalized = normalizeSettings(settings)
+
+    // One-time product default: dark. Light choosers can switch back after.
+    try {
+      const flag = 'calai.themeDefaultDark.v1'
+      if (!localStorage.getItem(flag)) {
+        localStorage.setItem(flag, '1')
+        if (normalized.theme !== 'dark') {
+          normalized = { ...normalized, theme: 'dark' }
+          await db.saveSettings(normalized)
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+
     applyDocumentPrefs(normalized)
     set({ meals, settings: normalized, hydrated: true })
   },

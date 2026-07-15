@@ -75,11 +75,17 @@ export function AppLayout() {
   ]
 
   return (
-    <div className="min-h-screen bg-hero dark:bg-hero-dark">
-      <header className="sticky top-0 z-30 border-b border-black/[0.04] bg-white/80 backdrop-blur-2xl dark:border-white/[0.06] dark:bg-[#07090c]/80">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen bg-hero dark:bg-hero-dark">
+      <div className="light-atmosphere" aria-hidden>
+        <div className="light-atmosphere__blob light-atmosphere__blob--a" />
+        <div className="light-atmosphere__blob light-atmosphere__blob--b" />
+        <div className="light-atmosphere__blob light-atmosphere__blob--c" />
+      </div>
+
+      <header className="sticky top-0 z-30 border-b border-brand-green/10 bg-white/70 backdrop-blur-2xl dark:border-white/[0.06] dark:bg-[#07090c]/80">
+        <div className="relative z-10 mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-green text-white shadow-[0_8px_20px_rgba(34,160,107,0.35)]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-green to-emerald-600 text-white shadow-[0_8px_20px_rgba(34,160,107,0.4)]">
               <span className="font-display text-lg font-bold">+</span>
             </div>
             <div className="min-w-0">
@@ -91,7 +97,7 @@ export function AppLayout() {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <div className="flex rounded-full bg-black/[0.04] p-0.5 dark:bg-white/10">
+            <div className="flex rounded-full bg-brand-green/10 p-0.5 dark:bg-white/10">
               <button
                 type="button"
                 onClick={() => void setLocale('ko')}
@@ -118,8 +124,9 @@ export function AppLayout() {
             <button
               type="button"
               onClick={() => void setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.04] text-sm dark:bg-white/10"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-orange-soft text-sm text-brand-orange shadow-sm ring-1 ring-brand-orange/20 transition hover:scale-105 dark:bg-white/10 dark:text-white dark:ring-0"
               aria-label={theme === 'dark' ? t.themeLight : t.themeDark}
+              title={theme === 'dark' ? t.themeLight : t.themeDark}
             >
               {theme === 'dark' ? '☀' : '☾'}
             </button>
@@ -157,12 +164,15 @@ export function AppLayout() {
         </div>
       </header>
 
-      <main key={location.pathname} className="page-enter mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-9">
+      <main
+        key={location.pathname}
+        className="page-enter relative z-10 mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-9"
+      >
         <Outlet />
       </main>
 
       {/* Mobile tab bar with center shutter FAB */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-brand-ink/10 bg-[#EEF3F0] shadow-[0_-10px_32px_rgba(18,21,28,0.12)] dark:border-white/15 dark:bg-[#10161c] dark:shadow-[0_-10px_32px_rgba(0,0,0,0.45)] md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-brand-green/15 bg-gradient-to-t from-[#E4F3EB] via-[#EEF8F1] to-white/95 shadow-[0_-12px_36px_rgba(34,160,107,0.12)] backdrop-blur-xl dark:border-white/15 dark:from-[#0c1218] dark:via-[#10161c] dark:to-[#10161c] dark:shadow-[0_-10px_32px_rgba(0,0,0,0.45)] md:hidden">
         <div className="relative mx-auto grid max-w-lg grid-cols-5 items-end px-1 pb-1 pt-1.5 safe-bottom">
           <NavLink
             to="/"

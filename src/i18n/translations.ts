@@ -233,6 +233,7 @@ export const translations = {
       modeGain: 'muscle gain',
       modeMaintain: 'maintain',
       goalsHint: 'Hard to pick numbers yourself? Tap recommend after filling weight & profile. You can still tweak by hand.',
+      themeHint: 'Dark is the default. Switch to light anytime here or with ☀ in the header.',
     },
     meal: {
       delete: 'Delete',
@@ -473,6 +474,7 @@ export const translations = {
       modeGain: '체중 증량',
       modeMaintain: '체중 유지',
       goalsHint: '숫자를 직접 정하기 어렵다면, 체중·프로필을 채운 뒤 추천받기를 누르세요. 이후에도 손으로 조정할 수 있습니다.',
+      themeHint: '기본은 다크예요. 라이트는 여기나 헤더 ☀에서 언제든 켤 수 있어요.',
     },
     meal: {
       delete: '삭제',

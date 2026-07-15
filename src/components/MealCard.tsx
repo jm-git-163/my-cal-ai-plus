@@ -14,7 +14,7 @@ export function MealCard({ meal, onDelete }: MealCardProps) {
   })
 
   return (
-    <article className="group glass-card overflow-hidden transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_36px_rgba(18,21,28,0.1)]">
+    <article className="group glass-card overflow-hidden transition duration-300 hover:-translate-y-0.5 hover:shadow-glass-lift dark:hover:shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
       <div className="flex gap-0 sm:gap-0">
         <div className="relative h-[5.5rem] w-[5.5rem] shrink-0 overflow-hidden sm:h-28 sm:w-28">
           {meal.imageDataUrl ? (

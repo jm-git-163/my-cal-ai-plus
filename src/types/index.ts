@@ -164,7 +164,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   activityLevel: 'light',
   goalsFromRecommend: false,
   locale: 'ko',
-  theme: 'light',
+  theme: 'dark',
   visionModel: '',
   visionTwoPass: true,
   visionDetail: 'high',
@@ -198,7 +198,7 @@ export function normalizeSettings(raw: Partial<UserSettings> | undefined): UserS
     activityLevel,
     goalsFromRecommend: Boolean(raw?.goalsFromRecommend),
     locale: raw?.locale === 'en' ? 'en' : 'ko',
-    theme: raw?.theme === 'dark' ? 'dark' : 'light',
+    theme: raw?.theme === 'light' ? 'light' : 'dark',
     // Vision pipeline is app-controlled for reliability — ignore stored overrides.
     visionModel: '',
     visionTwoPass: true,
