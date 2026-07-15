@@ -83,3 +83,14 @@ export function openInChrome(url = window.location.href): boolean {
   }
   return false
 }
+
+/** Official Chrome install links when the browser is missing. */
+export const CHROME_PLAY_STORE =
+  'https://play.google.com/store/apps/details?id=com.android.chrome&hl=ko'
+export const CHROME_APP_STORE =
+  'https://apps.apple.com/kr/app/google-chrome/id535886823'
+
+export function chromeInstallUrl(ua = navigator.userAgent): string {
+  if (isIOS(ua)) return CHROME_APP_STORE
+  return CHROME_PLAY_STORE
+}

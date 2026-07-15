@@ -1,6 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useI18n } from '@/hooks/useI18n'
 import {
+  chromeInstallUrl,
+  isAndroid,
+  isIOS,
   isInAppBrowser,
   isLikelyChrome,
   openInChrome,
@@ -30,6 +33,12 @@ export function OpenInChromeGate({ children }: { children: ReactNode }) {
   if (!blocked) return <>{children}</>
 
   const appUrl = typeof window !== 'undefined' ? window.location.href : 'https://calaicnn.vercel.app'
+  const installUrl = chromeInstallUrl()
+  const installLabel = isIOS()
+    ? t.chrome.installAppStore
+    : isAndroid()
+      ? t.chrome.installPlayStore
+      : t.chrome.installPlayStore
 
   const onOpenChrome = () => {
     openInChrome(appUrl)
@@ -74,6 +83,18 @@ export function OpenInChromeGate({ children }: { children: ReactNode }) {
         >
           {copied ? t.chrome.copied : t.chrome.copyLink}
         </button>
+
+        <a
+          href={installUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 flex w-full items-center justify-center rounded-2xl border border-brand/30 bg-brand/10 py-3 text-sm font-semibold text-brand dark:border-brand/40 dark:bg-brand/15 dark:text-brand-green"
+        >
+          {installLabel}
+        </a>
+        <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+          {t.chrome.installHint}
+        </p>
 
         <ol className="mt-8 space-y-2 text-left text-xs leading-relaxed text-slate-500 dark:text-slate-400">
           <li>1. {t.chrome.step1}</li>
