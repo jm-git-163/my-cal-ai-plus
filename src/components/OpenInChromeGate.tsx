@@ -80,14 +80,6 @@ export function OpenInChromeGate({ children }: { children: ReactNode }) {
           <li>2. {t.chrome.step2}</li>
           <li>3. {t.chrome.step3}</li>
         </ol>
-
-        <button
-          type="button"
-          onClick={() => setBlocked(false)}
-          className="mt-8 text-xs text-slate-400 underline underline-offset-2 dark:text-slate-500"
-        >
-          {t.chrome.continueAnyway}
-        </button>
       </div>
     </div>
   )
