@@ -27,8 +27,10 @@ export function DashboardPage() {
     <div className="mx-auto w-full space-y-5 md:space-y-7">
       <section className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-green">{t.dashboard.today}</p>
-          <h1 className="mt-1 font-display text-[1.75rem] font-bold leading-tight tracking-tight text-brand-ink dark:text-white sm:text-4xl">
+          <p className="inline-flex items-center rounded-full bg-brand-green/15 px-2.5 py-1 text-xs font-bold uppercase tracking-[0.14em] text-brand-green dark:bg-brand-green/20">
+            {t.dashboard.today}
+          </p>
+          <h1 className="mt-2 font-display text-[1.75rem] font-bold leading-tight tracking-tight text-brand-ink dark:text-white sm:text-4xl">
             {t.dashboard.title}
           </h1>
           <p className="mt-1 text-sm text-brand-muted dark:text-white/55">{t.dashboard.subtitle}</p>

@@ -26,7 +26,7 @@ export default {
       },
       backgroundImage: {
         hero:
-          'radial-gradient(ellipse 90% 55% at 8% -8%, rgba(34,160,107,0.28) 0%, transparent 58%), radial-gradient(ellipse 70% 50% at 96% 2%, rgba(232,139,46,0.22) 0%, transparent 52%), radial-gradient(ellipse 55% 40% at 70% 85%, rgba(47,111,237,0.10) 0%, transparent 55%), linear-gradient(165deg, #F4FBF7 0%, #EEF6F1 42%, #F7F3EE 100%)',
+          'radial-gradient(ellipse 95% 60% at 5% -5%, rgba(34,160,107,0.42) 0%, transparent 55%), radial-gradient(ellipse 75% 55% at 100% 0%, rgba(232,139,46,0.34) 0%, transparent 50%), radial-gradient(ellipse 60% 45% at 65% 90%, rgba(47,111,237,0.16) 0%, transparent 55%), linear-gradient(165deg, #E8F8EF 0%, #F3FAF5 40%, #FFF6EC 100%)',
         'hero-dark':
           'radial-gradient(ellipse 80% 50% at 0% -10%, rgba(34,160,107,0.22) 0%, transparent 55%), radial-gradient(ellipse 70% 45% at 100% 0%, rgba(232,139,46,0.14) 0%, transparent 50%), linear-gradient(180deg, #0C1014 0%, #121820 100%)',
       },

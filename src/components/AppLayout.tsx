@@ -77,12 +77,13 @@ export function AppLayout() {
   return (
     <div className="relative min-h-screen bg-hero dark:bg-hero-dark">
       <div className="light-atmosphere" aria-hidden>
+        <div className="light-atmosphere__dots" />
         <div className="light-atmosphere__blob light-atmosphere__blob--a" />
         <div className="light-atmosphere__blob light-atmosphere__blob--b" />
         <div className="light-atmosphere__blob light-atmosphere__blob--c" />
       </div>
 
-      <header className="sticky top-0 z-30 border-b border-brand-green/10 bg-white/70 backdrop-blur-2xl dark:border-white/[0.06] dark:bg-[#07090c]/80">
+      <header className="sticky top-0 z-30 border-b-2 border-brand-green/20 bg-gradient-to-b from-white via-[#F0FAF4]/90 to-[#E8F6EF]/85 backdrop-blur-2xl dark:border-white/[0.06] dark:bg-[#07090c]/80 dark:from-[#07090c] dark:via-[#07090c] dark:to-[#07090c] dark:border-b">
         <div className="relative z-10 mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-green to-emerald-600 text-white shadow-[0_8px_20px_rgba(34,160,107,0.4)]">
