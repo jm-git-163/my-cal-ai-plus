@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: #1a1f2c;
+  background: #f5f7fa;
+  -webkit-font-smoothing: antialiased;
+}
+
+html.dark body {
+  color: #e8ecf2;
+  background: #0f1419;
+}
+
+@layer components {
+  .glass-card {
+    @apply rounded-card border border-white/60 bg-white/80 shadow-glass backdrop-blur-md dark:border-white/10 dark:bg-white/5;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-green px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d8f5c] disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl border border-black/5 bg-white px-5 py-3 text-sm font-semibold text-brand-ink shadow-soft transition hover:bg-brand-soft disabled:opacity-50 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15;
+  }
+
+  .field-input {
+    @apply mt-1 w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-green/30 dark:border-white/10 dark:bg-white/5 dark:text-white;
+  }
+}
