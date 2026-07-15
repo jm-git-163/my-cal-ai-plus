@@ -1,8 +1,39 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { CoachResult } from '@/types'
+import { tReplace } from '@/i18n/translations'
 import { useI18n } from '@/hooks/useI18n'
 import { fetchCoachAdvice, generateShareCard } from '@/services/coach'
 import { useAppStore } from '@/store/useAppStore'
+
+function directionLabel(
+  t: ReturnType<typeof useI18n>['t'],
+  kind: 'weight' | 'muscle' | 'energy',
+  direction: string,
+) {
+  if (kind === 'weight') {
+    if (direction === 'lose') return t.coach.directionLose
+    if (direction === 'gain') return t.coach.directionGain
+    return t.coach.directionMaintain
+  }
+  if (kind === 'muscle') {
+    if (direction === 'increase') return t.coach.directionIncrease
+    if (direction === 'decrease') return t.coach.directionDecrease
+    return t.coach.directionMaintain
+  }
+  if (direction === 'up') return t.coach.directionUp
+  if (direction === 'down') return t.coach.directionDown
+  return t.coach.directionStable
+}
+
+function directionTone(direction: string) {
+  if (['lose', 'decrease', 'down'].includes(direction)) {
+    return 'bg-brand-orange-soft text-brand-orange dark:bg-brand-orange/20'
+  }
+  if (['gain', 'increase', 'up'].includes(direction)) {
+    return 'bg-brand-blue-soft text-brand-blue dark:bg-brand-blue/20'
+  }
+  return 'bg-brand-green-soft text-brand-green dark:bg-brand-green/20'
+}
 
 export function CoachPage() {
   const { t, locale } = useI18n()
@@ -14,10 +45,19 @@ export function CoachPage() {
   const [coach, setCoach] = useState<CoachResult | null>(null)
   const [cardUrl, setCardUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [staleLocale, setStaleLocale] = useState(false)
+  const [resultLocale, setResultLocale] = useState<typeof locale | null>(null)
+
+  useEffect(() => {
+    if (resultLocale && resultLocale !== locale) {
+      setStaleLocale(true)
+    }
+  }, [locale, resultLocale])
 
   async function runCoach() {
     setLoading(true)
     setError(null)
+    setStaleLocale(false)
     try {
       const result = await fetchCoachAdvice({
         meals,
@@ -26,6 +66,8 @@ export function CoachPage() {
         name: settings.name,
       })
       setCoach(result)
+      setResultLocale(locale)
+      setCardUrl(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : t.coach.error)
     } finally {
@@ -40,7 +82,7 @@ export function CoachPage() {
     try {
       const image = await generateShareCard({
         headline: coach.summary.slice(0, 60),
-        subtitle: coach.advice.slice(0, 80),
+        subtitle: (coach.weight_trend?.estimate_4w || coach.advice).slice(0, 80),
         locale,
       })
       setCardUrl(image)
@@ -54,6 +96,7 @@ export function CoachPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
+        <p className="text-sm font-medium text-brand-green">{t.nav.coach}</p>
         <h1 className="font-display text-3xl font-bold tracking-tight text-brand-ink dark:text-white">
           {t.coach.title}
         </h1>
@@ -80,6 +123,12 @@ export function CoachPage() {
         )}
       </div>
 
+      {staleLocale && (
+        <div className="rounded-2xl border border-brand-orange/30 bg-brand-orange-soft/60 px-4 py-3 text-sm text-brand-orange dark:bg-brand-orange/15">
+          {t.coach.reanalyzeHint}
+        </div>
+      )}
+
       {error && (
         <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
           {error}
@@ -87,33 +136,132 @@ export function CoachPage() {
       )}
 
       {coach && (
-        <div className="glass-card space-y-4 p-5 sm:p-6">
-          <div className="flex items-end justify-between gap-3">
+        <div className="space-y-4">
+          <div className="glass-card space-y-4 p-5 sm:p-6">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-brand-muted dark:text-white/50">{t.coach.score}</p>
+                <p className="font-display text-4xl font-bold text-brand-green">{coach.score}</p>
+              </div>
+              <p className="max-w-xs text-right text-sm text-brand-muted dark:text-white/55">
+                {coach.predicted_goal_note}
+              </p>
+            </div>
             <div>
-              <p className="text-sm font-medium text-brand-muted dark:text-white/50">{t.coach.score}</p>
-              <p className="font-display text-4xl font-bold text-brand-green">{coach.score}</p>
+              <h2 className="font-display text-xl font-semibold text-brand-ink dark:text-white">{coach.summary}</h2>
+              <p className="mt-2 text-brand-ink/90 dark:text-white/80">{coach.advice}</p>
             </div>
-            <p className="max-w-xs text-right text-sm text-brand-muted dark:text-white/55">
-              {coach.predicted_goal_note}
-            </p>
-          </div>
-          <div>
-            <h2 className="font-display text-xl font-semibold text-brand-ink dark:text-white">{coach.summary}</h2>
-            <p className="mt-2 text-brand-ink/90 dark:text-white/80">{coach.advice}</p>
-          </div>
-          <div>
-            <p className="mb-2 text-sm font-medium text-brand-muted dark:text-white/50">{t.coach.focus}</p>
-            <div className="flex flex-wrap gap-2">
-              {coach.focus.map((f) => (
-                <span
-                  key={f}
-                  className="rounded-xl bg-brand-green-soft px-3 py-1 text-xs font-semibold text-brand-green dark:bg-brand-green/20"
-                >
-                  {f}
-                </span>
-              ))}
+            <div>
+              <p className="mb-2 text-sm font-medium text-brand-muted dark:text-white/50">{t.coach.focus}</p>
+              <div className="flex flex-wrap gap-2">
+                {coach.focus.map((f) => (
+                  <span
+                    key={f}
+                    className="rounded-xl bg-brand-green-soft px-3 py-1 text-xs font-semibold text-brand-green dark:bg-brand-green/20"
+                  >
+                    {f}
+                  </span>
+                ))}
+              </div>
             </div>
+
+            {coach.stats && coach.stats.days_logged > 0 && (
+              <div className="rounded-2xl bg-black/[0.03] px-4 py-3 dark:bg-white/5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand-muted dark:text-white/45">
+                  {t.coach.avgIntake} · {tReplace(t.coach.daysLogged, { n: String(coach.stats.days_logged) })}
+                </p>
+                <p className="mt-1 text-sm text-brand-ink dark:text-white/80">
+                  {coach.stats.avg_daily_calories} kcal · P {coach.stats.avg_daily_protein}g · C{' '}
+                  {coach.stats.avg_daily_carbs}g · F {coach.stats.avg_daily_fat}g
+                </p>
+              </div>
+            )}
           </div>
+
+          {(coach.weight_trend || coach.muscle_trend || coach.energy_trend) && (
+            <section className="space-y-3">
+              <h3 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
+                {t.coach.trendsTitle}
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {coach.weight_trend && (
+                  <article className="glass-card flex flex-col gap-2 p-4">
+                    <p className="text-sm font-medium text-brand-muted dark:text-white/50">{t.coach.weight}</p>
+                    <span
+                      className={`w-fit rounded-lg px-2 py-0.5 text-[11px] font-semibold ${directionTone(coach.weight_trend.direction)}`}
+                    >
+                      {directionLabel(t, 'weight', coach.weight_trend.direction)}
+                    </span>
+                    {coach.weight_trend.estimate_4w && (
+                      <p className="font-display text-lg font-bold text-brand-ink dark:text-white">
+                        {coach.weight_trend.estimate_4w}
+                      </p>
+                    )}
+                    <p className="text-xs text-brand-muted dark:text-white/55">{t.coach.estimate4w}</p>
+                    <p className="text-sm text-brand-ink/90 dark:text-white/75">{coach.weight_trend.explanation}</p>
+                  </article>
+                )}
+                {coach.muscle_trend && (
+                  <article className="glass-card flex flex-col gap-2 p-4">
+                    <p className="text-sm font-medium text-brand-muted dark:text-white/50">{t.coach.muscle}</p>
+                    <span
+                      className={`w-fit rounded-lg px-2 py-0.5 text-[11px] font-semibold ${directionTone(coach.muscle_trend.direction)}`}
+                    >
+                      {directionLabel(t, 'muscle', coach.muscle_trend.direction)}
+                    </span>
+                    {coach.muscle_trend.estimate_4w && (
+                      <p className="font-display text-lg font-bold text-brand-ink dark:text-white">
+                        {coach.muscle_trend.estimate_4w}
+                      </p>
+                    )}
+                    <p className="text-xs text-brand-muted dark:text-white/55">{t.coach.estimate4w}</p>
+                    <p className="text-sm text-brand-ink/90 dark:text-white/75">{coach.muscle_trend.explanation}</p>
+                  </article>
+                )}
+                {coach.energy_trend && (
+                  <article className="glass-card flex flex-col gap-2 p-4">
+                    <p className="text-sm font-medium text-brand-muted dark:text-white/50">{t.coach.energy}</p>
+                    <span
+                      className={`w-fit rounded-lg px-2 py-0.5 text-[11px] font-semibold ${directionTone(coach.energy_trend.direction)}`}
+                    >
+                      {directionLabel(t, 'energy', coach.energy_trend.direction)}
+                    </span>
+                    <p className="text-sm text-brand-ink/90 dark:text-white/75">{coach.energy_trend.explanation}</p>
+                  </article>
+                )}
+              </div>
+            </section>
+          )}
+
+          {(coach.outlook_2w || coach.outlook_4w || coach.outlook_8w) && (
+            <section className="glass-card space-y-3 p-5">
+              <h3 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
+                {t.coach.outlookTitle}
+              </h3>
+              {coach.outlook_2w && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-green">{t.coach.week2}</p>
+                  <p className="mt-1 text-sm text-brand-ink dark:text-white/80">{coach.outlook_2w}</p>
+                </div>
+              )}
+              {coach.outlook_4w && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-green">{t.coach.week4}</p>
+                  <p className="mt-1 text-sm text-brand-ink dark:text-white/80">{coach.outlook_4w}</p>
+                </div>
+              )}
+              {coach.outlook_8w && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-green">{t.coach.week8}</p>
+                  <p className="mt-1 text-sm text-brand-ink dark:text-white/80">{coach.outlook_8w}</p>
+                </div>
+              )}
+            </section>
+          )}
+
+          {coach.disclaimer && (
+            <p className="px-1 text-xs text-brand-muted dark:text-white/45">{coach.disclaimer}</p>
+          )}
         </div>
       )}
 

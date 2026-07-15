@@ -25,6 +25,7 @@ export async function fetchCoachAdvice(params: {
         protein: params.goals.protein,
         carbs: params.goals.carbs,
         fat: params.goals.fat,
+        exerciseMin: params.goals.exerciseMin,
       },
       locale: params.locale,
       name: params.name,

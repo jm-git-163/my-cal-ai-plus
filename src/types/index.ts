@@ -27,12 +27,32 @@ export interface NutritionResult {
   image_count?: number
 }
 
+export interface CoachTrendBlock {
+  direction: string
+  estimate_4w?: string
+  explanation: string
+}
+
 export interface CoachResult {
   summary: string
   advice: string
   focus: string[]
   score: number
   predicted_goal_note: string
+  weight_trend?: CoachTrendBlock
+  muscle_trend?: CoachTrendBlock
+  energy_trend?: CoachTrendBlock
+  outlook_2w?: string
+  outlook_4w?: string
+  outlook_8w?: string
+  disclaimer?: string
+  stats?: {
+    days_logged: number
+    avg_daily_calories: number
+    avg_daily_protein: number
+    avg_daily_carbs: number
+    avg_daily_fat: number
+  }
 }
 
 export interface MealEntry extends NutritionResult {
