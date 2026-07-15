@@ -8,20 +8,24 @@ export function getOpenAI() {
   return new OpenAI({ apiKey })
 }
 
-/** Prefer OPENAI_MODEL; defaults to gpt-5.6 per OpenAI platform docs. */
+/** Vision / heavy tasks — Prefer OPENAI_MODEL; defaults to gpt-5.6. */
 export function getModel() {
   return process.env.OPENAI_MODEL || 'gpt-5.6'
 }
 
 /**
- * Fast path for coach / “지금 뭐먹지” — shorter latency than full vision model.
- * Override with OPENAI_FAST_MODEL; falls back to OPENAI_MODEL / gpt-5.6.
+ * Coach / “지금 뭐먹지” — speed over frontier quality.
+ * Default gpt-4.1-mini (does NOT fall back to OPENAI_MODEL, which is often slow).
  */
 export function getFastModel() {
-  return process.env.OPENAI_FAST_MODEL || process.env.OPENAI_MODEL || 'gpt-5.6'
+  return process.env.OPENAI_FAST_MODEL || 'gpt-4.1-mini'
 }
 
-/** Reasoning effort for structured JSON coaching (low = much faster). */
+/** Reasoning effort only applies to GPT-5 / o-series models. */
+export function supportsReasoningEffort(model: string): boolean {
+  return /^(gpt-5|o\d|o-mini)/i.test(model)
+}
+
 export function getFastReasoningEffort(): 'minimal' | 'low' | 'medium' | 'high' {
   const raw = (process.env.OPENAI_FAST_REASONING || 'low').toLowerCase()
   if (raw === 'none' || raw === 'minimal') return 'minimal'

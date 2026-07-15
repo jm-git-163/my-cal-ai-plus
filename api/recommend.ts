@@ -1,5 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getFastModel, getFastReasoningEffort, getOpenAI } from '../lib/openai.js'
+import {
+  getFastModel,
+  getFastReasoningEffort,
+  getOpenAI,
+  supportsReasoningEffort,
+} from '../lib/openai.js'
 
 const OPTION_KINDS = ['meal', 'snack', 'hydrate', 'rest'] as const
 
@@ -194,11 +199,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const client = getOpenAI()
     const model = getFastModel()
-    const reasoningEffort = getFastReasoningEffort()
 
     const response = await client.responses.create({
       model,
-      reasoning: { effort: reasoningEffort },
+      ...(supportsReasoningEffort(model)
+        ? { reasoning: { effort: getFastReasoningEffort() } }
+        : {}),
       instructions: `You are My Cal AI Plus meal coach.
 Recommend what to do NEXT based on clock time, remaining macros, weight goal, and recent eating.
 Be concise. All user-facing strings must be in ${lang}.

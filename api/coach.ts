@@ -1,5 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getFastModel, getFastReasoningEffort, getOpenAI } from '../lib/openai.js'
+import {
+  getFastModel,
+  getFastReasoningEffort,
+  getOpenAI,
+  supportsReasoningEffort,
+} from '../lib/openai.js'
 
 const coachSchema = {
   type: 'object',
@@ -134,7 +139,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const client = getOpenAI()
     const model = getFastModel()
-    const reasoningEffort = getFastReasoningEffort()
 
     const calorieGap =
       goals.calories && trend.days_logged > 0 ? trend.avg_daily_calories - goals.calories : null
@@ -163,7 +167,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const response = await client.responses.create({
       model,
-      reasoning: { effort: reasoningEffort },
+      ...(supportsReasoningEffort(model)
+        ? { reasoning: { effort: getFastReasoningEffort() } }
+        : {}),
       instructions: `You are My Cal AI Plus fitness & nutrition coach.
 Analyze logged meals vs daily goals and project what happens IF the user continues this eating pattern.
 Be concise — short strings, no fluff.
