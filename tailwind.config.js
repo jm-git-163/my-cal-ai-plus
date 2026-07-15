@@ -29,9 +29,12 @@ export default {
         glass: '0 4px 24px rgba(26, 31, 44, 0.06)',
       },
       backgroundImage: {
-        hero: 'radial-gradient(ellipse at top left, #E8F6EF 0%, transparent 50%), radial-gradient(ellipse at bottom right, #FFF4E8 0%, transparent 45%), linear-gradient(180deg, #F8FAFC 0%, #F0F4F8 100%)',
+        hero: 'radial-gradient(ellipse 80% 50% at 0% -10%, #D9F5E8 0%, transparent 55%), radial-gradient(ellipse 70% 45% at 100% 0%, #FFE8D2 0%, transparent 50%), linear-gradient(180deg, #F7FAF8 0%, #EEF3F0 100%)',
         'hero-dark':
-          'radial-gradient(ellipse at top left, rgba(34,160,107,0.18) 0%, transparent 50%), radial-gradient(ellipse at bottom right, rgba(232,139,46,0.12) 0%, transparent 45%), linear-gradient(180deg, #0F1419 0%, #151B23 100%)',
+          'radial-gradient(ellipse 80% 50% at 0% -10%, rgba(34,160,107,0.22) 0%, transparent 55%), radial-gradient(ellipse 70% 45% at 100% 0%, rgba(232,139,46,0.14) 0%, transparent 50%), linear-gradient(180deg, #0C1014 0%, #121820 100%)',
+      },
+      screens: {
+        xs: '400px',
       },
     },
   },

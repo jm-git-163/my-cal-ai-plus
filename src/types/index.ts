@@ -1,11 +1,27 @@
 import type { Locale, ThemeMode } from '@/i18n/translations'
 
 export type MealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack'
+export type VisionDetail = 'low' | 'high' | 'original' | 'auto'
+export type GoalVerdict = 'help' | 'caution' | 'neutral'
 
 export interface FoodItemEstimate {
   name: string
   grams: number
   calories: number
+}
+
+export interface FieldConfidence {
+  food: number
+  grams: number
+  calories: number
+  protein: number
+  fat: number
+  carbs: number
+}
+
+export interface GoalImpact {
+  verdict: GoalVerdict
+  message: string
 }
 
 export interface NutritionResult {
@@ -23,8 +39,14 @@ export interface NutritionResult {
   visible_text?: string
   image_quality?: 'low' | 'medium' | 'high'
   portion_note?: string
+  portionBasis?: string
+  assumptions?: string[]
+  fieldConfidence?: FieldConfidence
+  goalImpact?: GoalImpact
   detail?: string
   image_count?: number
+  model?: string
+  twoPass?: boolean
 }
 
 export interface CoachTrendBlock {
@@ -74,8 +96,13 @@ export interface DailyGoals {
 export interface UserSettings {
   name: string
   goals: DailyGoals
+  currentWeightKg: number
+  goalWeightKg: number
   locale: Locale
   theme: ThemeMode
+  visionModel: string
+  visionTwoPass: boolean
+  visionDetail: VisionDetail
 }
 
 export const DEFAULT_GOALS: DailyGoals = {
@@ -90,15 +117,38 @@ export const DEFAULT_GOALS: DailyGoals = {
 export const DEFAULT_SETTINGS: UserSettings = {
   name: 'User',
   goals: DEFAULT_GOALS,
+  currentWeightKg: 70,
+  goalWeightKg: 65,
   locale: 'ko',
   theme: 'light',
+  visionModel: '',
+  visionTwoPass: true,
+  visionDetail: 'high',
+}
+
+export function weightGoalMode(current: number, goal: number): 'lose' | 'gain' | 'maintain' {
+  const diff = goal - current
+  if (diff < -0.5) return 'lose'
+  if (diff > 0.5) return 'gain'
+  return 'maintain'
 }
 
 export function normalizeSettings(raw: Partial<UserSettings> | undefined): UserSettings {
   return {
     name: raw?.name || DEFAULT_SETTINGS.name,
     goals: { ...DEFAULT_GOALS, ...raw?.goals },
+    currentWeightKg: Number(raw?.currentWeightKg) > 0 ? Number(raw?.currentWeightKg) : DEFAULT_SETTINGS.currentWeightKg,
+    goalWeightKg: Number(raw?.goalWeightKg) > 0 ? Number(raw?.goalWeightKg) : DEFAULT_SETTINGS.goalWeightKg,
     locale: raw?.locale === 'en' ? 'en' : 'ko',
     theme: raw?.theme === 'dark' ? 'dark' : 'light',
+    visionModel: typeof raw?.visionModel === 'string' ? raw.visionModel : '',
+    visionTwoPass: raw?.visionTwoPass !== false,
+    visionDetail:
+      raw?.visionDetail === 'low' ||
+      raw?.visionDetail === 'original' ||
+      raw?.visionDetail === 'auto' ||
+      raw?.visionDetail === 'high'
+        ? raw.visionDetail
+        : 'high',
   }
 }

@@ -1,17 +1,10 @@
-import type { NutritionResult } from '@/types'
-
-export type VisionDetail = 'low' | 'high' | 'original' | 'auto'
+import type { NutritionResult, VisionDetail } from '@/types'
 
 const ALLOWED = /^image\/(png|jpeg|jpg|webp|gif)$/i
 
 export function validateImageFile(file: File): string | null {
-  if (!ALLOWED.test(file.type)) {
-    return 'UNSUPPORTED_TYPE'
-  }
-  // ~4.5MB binary ≈ conservative client gate (API also checks)
-  if (file.size > 4.5 * 1024 * 1024) {
-    return 'TOO_LARGE'
-  }
+  if (!ALLOWED.test(file.type)) return 'UNSUPPORTED_TYPE'
+  if (file.size > 4.5 * 1024 * 1024) return 'TOO_LARGE'
   return null
 }
 
@@ -20,6 +13,11 @@ export async function analyzeFoodImage(params: {
   preprocess?: string
   locale?: 'ko' | 'en'
   detail?: VisionDetail
+  model?: string
+  twoPass?: boolean
+  currentWeightKg?: number
+  goalWeightKg?: number
+  calorieGoal?: number
 }): Promise<NutritionResult> {
   const images = [params.image, params.preprocess].filter(
     (u): u is string => typeof u === 'string' && u.length > 0,
@@ -33,6 +31,11 @@ export async function analyzeFoodImage(params: {
       image: params.image,
       locale: params.locale ?? 'ko',
       detail: params.detail ?? 'high',
+      model: params.model || undefined,
+      twoPass: params.twoPass !== false,
+      currentWeightKg: params.currentWeightKg,
+      goalWeightKg: params.goalWeightKg,
+      calorieGoal: params.calorieGoal,
     }),
   })
 

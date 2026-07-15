@@ -59,3 +59,4 @@ export const useAppStore = create<AppState>((set, get) => ({
     await get().updateSettings({ ...get().settings, theme })
   },
 }))
+

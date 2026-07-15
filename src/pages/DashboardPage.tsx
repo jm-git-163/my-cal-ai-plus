@@ -22,13 +22,13 @@ export function DashboardPage() {
   const fatAccent = theme === 'dark' ? '#E8ECF2' : '#1A1F2C'
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto w-full space-y-6 md:space-y-8">
       <section className="space-y-2">
         <p className="text-sm font-medium text-brand-green">{t.dashboard.today}</p>
-        <h1 className="font-display text-3xl font-bold tracking-tight text-brand-ink dark:text-white sm:text-4xl">
+        <h1 className="font-display text-2xl font-bold tracking-tight text-brand-ink dark:text-white sm:text-3xl lg:text-4xl">
           {tReplace(t.dashboard.hello, { name: settings.name })}
         </h1>
-        <p className="max-w-xl text-brand-muted dark:text-white/60">{t.dashboard.subtitle}</p>
+        <p className="max-w-2xl text-sm text-brand-muted dark:text-white/60 sm:text-base">{t.dashboard.subtitle}</p>
         <div className="flex flex-wrap gap-2 pt-2">
           <Link to="/scan" className="btn-primary">
             {t.dashboard.scanFood}
@@ -36,6 +36,47 @@ export function DashboardPage() {
           <Link to="/coach" className="btn-secondary">
             {t.dashboard.askCoach}
           </Link>
+        </div>
+      </section>
+
+      <section className="glass-card p-4 sm:p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-brand-muted dark:text-white/55">{t.dashboard.weightProgress}</p>
+            <p className="mt-1 font-display text-2xl font-bold text-brand-ink dark:text-white sm:text-3xl">
+              {settings.currentWeightKg}
+              <span className="text-base font-semibold text-brand-muted"> kg</span>
+              <span className="mx-2 text-brand-muted">→</span>
+              {settings.goalWeightKg}
+              <span className="text-base font-semibold text-brand-muted"> kg</span>
+            </p>
+            <p className="mt-1 text-xs text-brand-muted dark:text-white/50">
+              {t.dashboard.current} → {t.dashboard.goal} ·{' '}
+              {tReplace(t.dashboard.toGo, {
+                n: Math.abs(settings.currentWeightKg - settings.goalWeightKg).toFixed(1),
+              })}
+            </p>
+          </div>
+          <Link to="/settings" className="text-sm font-semibold text-brand-green hover:underline">
+            {t.nav.settings}
+          </Link>
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
+          <div
+            className="h-full rounded-full bg-brand-green transition-all"
+            style={{
+              width: `${Math.min(
+                100,
+                Math.max(
+                  8,
+                  100 -
+                    (Math.abs(settings.currentWeightKg - settings.goalWeightKg) /
+                      Math.max(settings.currentWeightKg, 1)) *
+                      100,
+                ),
+              )}%`,
+            }}
+          />
         </div>
       </section>
 

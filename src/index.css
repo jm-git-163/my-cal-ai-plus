@@ -4,6 +4,7 @@
 
 :root {
   color-scheme: light;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 html.dark {
@@ -20,18 +21,18 @@ body {
   margin: 0;
   font-family: 'DM Sans', system-ui, sans-serif;
   color: #1a1f2c;
-  background: #f5f7fa;
+  background: #f3f6f4;
   -webkit-font-smoothing: antialiased;
 }
 
 html.dark body {
   color: #e8ecf2;
-  background: #0f1419;
+  background: #0c1014;
 }
 
 @layer components {
   .glass-card {
-    @apply rounded-card border border-white/60 bg-white/80 shadow-glass backdrop-blur-md dark:border-white/10 dark:bg-white/5;
+    @apply rounded-card border border-white/70 bg-white/85 shadow-glass backdrop-blur-md dark:border-white/10 dark:bg-white/[0.06];
   }
 
   .btn-primary {
@@ -44,5 +45,15 @@ html.dark body {
 
   .field-input {
     @apply mt-1 w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-green/30 dark:border-white/10 dark:bg-white/5 dark:text-white;
+  }
+
+  .safe-bottom {
+    padding-bottom: max(0.35rem, var(--safe-bottom));
+  }
+}
+
+@media (min-width: 768px) {
+  body {
+    background-attachment: fixed;
   }
 }

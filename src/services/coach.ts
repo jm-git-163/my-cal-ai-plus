@@ -6,6 +6,8 @@ export async function fetchCoachAdvice(params: {
   goals: DailyGoals
   locale: Locale
   name: string
+  currentWeightKg?: number
+  goalWeightKg?: number
 }): Promise<CoachResult> {
   const res = await fetch('/api/coach', {
     method: 'POST',
@@ -27,6 +29,8 @@ export async function fetchCoachAdvice(params: {
         fat: params.goals.fat,
         exerciseMin: params.goals.exerciseMin,
       },
+      currentWeightKg: params.currentWeightKg,
+      goalWeightKg: params.goalWeightKg,
       locale: params.locale,
       name: params.name,
     }),

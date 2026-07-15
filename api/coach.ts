@@ -120,6 +120,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       locale?: string
       name?: string
+      currentWeightKg?: number
+      goalWeightKg?: number
     }
 
     const meals = Array.isArray(body.meals) ? body.meals.slice(0, 40) : []
@@ -127,6 +129,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const lang = body.locale === 'en' ? 'English' : 'Korean'
     const name = body.name || 'User'
     const trend = buildTrendStats(meals)
+    const currentWeightKg = body.currentWeightKg
+    const goalWeightKg = body.goalWeightKg
 
     const client = getOpenAI()
     const model = getModel()
@@ -139,6 +143,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const payload = {
       name,
       goals,
+      currentWeightKg: currentWeightKg ?? null,
+      goalWeightKg: goalWeightKg ?? null,
       trend,
       calorie_gap_vs_goal: calorieGap,
       protein_gap_vs_goal: proteinGap,
@@ -172,6 +178,7 @@ Output requirements (all user-facing strings in ${lang}):
 - disclaimer: short note that this is an estimate, not medical advice, individuals vary
 
 Rules:
+- Use currentWeightKg vs goalWeightKg: if goal < current prefer calorie deficit & protein preservation; if goal > current prefer surplus + protein for muscle capacity.
 - Use trend.avg_daily_calories vs goals.calories for weight bias (~7700 kcal ≈ 1 kg as rough heuristic; keep ranges, not false precision).
 - Use protein vs goals.protein and calorie balance for muscle outlook (protein surplus without stimulus ≠ guaranteed muscle; say "capacity" language).
 - If meals empty or days_logged < 2, be conservative, lower confidence in tone, and coach starting habits.

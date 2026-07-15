@@ -64,6 +64,8 @@ export function CoachPage() {
         goals: settings.goals,
         locale,
         name: settings.name,
+        currentWeightKg: settings.currentWeightKg,
+        goalWeightKg: settings.goalWeightKg,
       })
       setCoach(result)
       setResultLocale(locale)

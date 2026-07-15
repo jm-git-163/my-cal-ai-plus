@@ -9,30 +9,32 @@ export function AppLayout() {
   const setTheme = useAppStore((s) => s.setTheme)
 
   const links = [
-    { to: '/', label: t.nav.dashboard, end: true },
-    { to: '/scan', label: t.nav.scan, end: false },
-    { to: '/history', label: t.nav.history, end: false },
-    { to: '/coach', label: t.nav.coach, end: false },
-    { to: '/settings', label: t.nav.settings, end: false },
+    { to: '/', label: t.nav.dashboard, short: 'Home', end: true },
+    { to: '/scan', label: t.nav.scan, short: 'Scan', end: false },
+    { to: '/history', label: t.nav.history, short: 'Log', end: false },
+    { to: '/coach', label: t.nav.coach, short: 'Coach', end: false },
+    { to: '/settings', label: t.nav.settings, short: 'Set', end: false },
   ]
 
   return (
     <div className="min-h-screen bg-hero dark:bg-hero-dark">
-      <header className="sticky top-0 z-20 border-b border-white/50 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-[#121820]/80">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <header className="sticky top-0 z-20 border-b border-white/50 bg-white/75 backdrop-blur-xl dark:border-white/10 dark:bg-[#0f1419]/85">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-green text-white shadow-soft">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-green text-white shadow-soft sm:h-11 sm:w-11">
               <span className="font-display text-lg font-bold">C</span>
             </div>
             <div className="min-w-0">
-              <p className="font-display text-lg font-bold leading-tight tracking-tight text-brand-ink dark:text-white">
+              <p className="font-display text-base font-bold leading-tight tracking-tight text-brand-ink dark:text-white sm:text-lg">
                 My Cal AI Plus
               </p>
-              <p className="truncate text-xs text-brand-muted dark:text-white/55">{t.brandTagline}</p>
+              <p className="hidden truncate text-xs text-brand-muted dark:text-white/55 xs:block sm:block">
+                {t.brandTagline}
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="flex rounded-xl bg-black/5 p-0.5 dark:bg-white/10">
               <button
                 type="button"
@@ -67,14 +69,14 @@ export function AppLayout() {
             >
               {theme === 'dark' ? '☀' : '☾'}
             </button>
-            <nav className="ml-1 hidden items-center gap-1 sm:flex">
+            <nav className="ml-1 hidden items-center gap-1 md:flex lg:gap-1.5">
               {links.map((l) => (
                 <NavLink
                   key={l.to}
                   to={l.to}
                   end={l.end}
                   className={({ isActive }) =>
-                    `rounded-xl px-3 py-2 text-sm font-medium transition ${
+                    `rounded-xl px-3 py-2 text-sm font-medium transition lg:px-3.5 ${
                       isActive
                         ? 'bg-brand-green-soft text-brand-green dark:bg-brand-green/20 dark:text-brand-green'
                         : 'text-brand-muted hover:bg-white/80 hover:text-brand-ink dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white'
@@ -89,29 +91,29 @@ export function AppLayout() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-7 md:py-8 lg:px-8 lg:py-10">
         <Outlet />
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-white/60 bg-white/85 backdrop-blur-xl dark:border-white/10 dark:bg-[#121820]/90 sm:hidden">
-        <div className="mx-auto flex max-w-5xl justify-around px-2 py-2">
+      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-white/60 bg-white/90 backdrop-blur-xl dark:border-white/10 dark:bg-[#0f1419]/92 md:hidden">
+        <div className="mx-auto grid max-w-lg grid-cols-5 gap-0.5 px-1 py-1.5 safe-bottom">
           {links.map((l) => (
             <NavLink
               key={l.to}
               to={l.to}
               end={l.end}
               className={({ isActive }) =>
-                `flex flex-1 flex-col items-center rounded-xl px-2 py-2 text-[11px] font-semibold ${
-                  isActive ? 'text-brand-green' : 'text-brand-muted dark:text-white/50'
+                `flex flex-col items-center justify-center rounded-xl px-1 py-2 text-[10px] font-semibold leading-tight ${
+                  isActive ? 'bg-brand-green-soft/80 text-brand-green dark:bg-brand-green/20' : 'text-brand-muted dark:text-white/50'
                 }`
               }
             >
-              {l.label}
+              <span className="max-w-full truncate">{l.label}</span>
             </NavLink>
           ))}
         </div>
       </nav>
-      <div className="h-20 sm:hidden" />
+      <div className="h-[4.5rem] md:hidden" />
     </div>
   )
 }
