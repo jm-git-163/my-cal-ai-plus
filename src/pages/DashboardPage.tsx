@@ -17,78 +17,93 @@ export function DashboardPage() {
   const today = useMemo(() => todayMeals(meals), [meals])
   const totals = useMemo(() => sumNutrition(today), [today])
   const { goals } = settings
+  const remaining = goals.calories - totals.calories
+  const calPct = goals.calories > 0 ? Math.min(100, (totals.calories / goals.calories) * 100) : 0
+  const delta = Math.abs(settings.currentWeightKg - settings.goalWeightKg)
 
   const fatSoft = theme === 'dark' ? '#2A3140' : '#EEF0F4'
   const fatAccent = theme === 'dark' ? '#E8ECF2' : '#1A1F2C'
 
   return (
-    <div className="mx-auto w-full space-y-6 md:space-y-8">
-      <section className="space-y-2">
-        <p className="text-sm font-medium text-brand-green">{t.dashboard.today}</p>
-        <h1 className="font-display text-2xl font-bold tracking-tight text-brand-ink dark:text-white sm:text-3xl lg:text-4xl">
-          {tReplace(t.dashboard.hello, { name: settings.name })}
-        </h1>
-        <p className="max-w-2xl text-sm text-brand-muted dark:text-white/60 sm:text-base">{t.dashboard.subtitle}</p>
-        <div className="flex flex-wrap gap-2 pt-2">
-          <Link to="/scan" className="btn-primary">
-            {t.dashboard.scanFood}
-          </Link>
+    <div className="mx-auto w-full space-y-5 md:space-y-7">
+      <section className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-green">{t.dashboard.today}</p>
+          <h1 className="mt-1 font-display text-[1.75rem] font-bold leading-tight tracking-tight text-brand-ink dark:text-white sm:text-4xl">
+            {tReplace(t.dashboard.hello, { name: settings.name })}
+          </h1>
+        </div>
+        <div className="hidden gap-2 sm:flex">
           <Link to="/coach" className="btn-secondary">
             {t.dashboard.askCoach}
           </Link>
-        </div>
-      </section>
-
-      <section className="glass-card p-4 sm:p-5">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-brand-muted dark:text-white/55">{t.dashboard.weightProgress}</p>
-            <p className="mt-1 font-display text-2xl font-bold text-brand-ink dark:text-white sm:text-3xl">
-              {settings.currentWeightKg}
-              <span className="text-base font-semibold text-brand-muted"> kg</span>
-              <span className="mx-2 text-brand-muted">→</span>
-              {settings.goalWeightKg}
-              <span className="text-base font-semibold text-brand-muted"> kg</span>
-            </p>
-            <p className="mt-1 text-xs text-brand-muted dark:text-white/50">
-              {t.dashboard.current} → {t.dashboard.goal} ·{' '}
-              {tReplace(t.dashboard.toGo, {
-                n: Math.abs(settings.currentWeightKg - settings.goalWeightKg).toFixed(1),
-              })}
-            </p>
-          </div>
-          <Link to="/settings" className="text-sm font-semibold text-brand-green hover:underline">
-            {t.nav.settings}
+          <Link to="/scan" className="btn-primary">
+            {t.dashboard.scanFood}
           </Link>
         </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
-          <div
-            className="h-full rounded-full bg-brand-green transition-all"
-            style={{
-              width: `${Math.min(
-                100,
-                Math.max(
-                  8,
-                  100 -
-                    (Math.abs(settings.currentWeightKg - settings.goalWeightKg) /
-                      Math.max(settings.currentWeightKg, 1)) *
-                      100,
-                ),
-              )}%`,
-            }}
-          />
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+        <div className="glass-card relative overflow-hidden p-5 sm:p-7">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-44 w-44 rounded-full bg-brand-green/20 blur-3xl" />
+          <p className="text-sm font-medium text-brand-muted dark:text-white/50">{t.dashboard.calories}</p>
+          <div className="mt-1 flex flex-wrap items-end gap-x-2 gap-y-1">
+            <p className="tabular font-display text-5xl font-bold tracking-[-0.045em] text-brand-ink dark:text-white sm:text-6xl lg:text-7xl">
+              {Math.round(totals.calories)}
+            </p>
+            <p className="mb-2 tabular text-sm font-semibold text-brand-muted">/ {goals.calories}</p>
+          </div>
+          <p className="mt-1 text-sm text-brand-muted dark:text-white/50">
+            {remaining >= 0
+              ? tReplace(t.dashboard.remaining, { n: String(Math.round(remaining)) })
+              : t.dashboard.overGoal}
+          </p>
+          <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-black/[0.05] dark:bg-white/10">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-brand-green to-emerald-400 transition-all duration-700 ease-out"
+              style={{ width: `${calPct}%` }}
+            />
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:hidden">
+            <Link to="/scan" className="btn-primary text-center">
+              {t.dashboard.scanFood}
+            </Link>
+            <Link to="/coach" className="btn-secondary text-center">
+              {t.dashboard.askCoach}
+            </Link>
+          </div>
+        </div>
+
+        <div className="glass-card flex flex-col justify-between p-5 sm:p-6">
+          <div>
+            <p className="text-sm font-medium text-brand-muted dark:text-white/50">{t.dashboard.weightProgress}</p>
+            <p className="mt-3 tabular font-display text-3xl font-bold tracking-tight text-brand-ink dark:text-white sm:text-4xl">
+              {settings.currentWeightKg}
+              <span className="mx-2 text-lg font-semibold text-brand-muted">→</span>
+              {settings.goalWeightKg}
+              <span className="ml-1 text-sm font-semibold text-brand-muted">kg</span>
+            </p>
+            <p className="mt-2 text-xs text-brand-muted dark:text-white/45">
+              {tReplace(t.dashboard.toGo, { n: delta.toFixed(1) })}
+            </p>
+          </div>
+          <div className="mt-6">
+            <div className="h-2 overflow-hidden rounded-full bg-black/[0.05] dark:bg-white/10">
+              <div
+                className="h-full rounded-full bg-brand-ink transition-all dark:bg-white"
+                style={{
+                  width: `${Math.min(100, Math.max(10, 100 - (delta / Math.max(settings.currentWeightKg, 1)) * 100))}%`,
+                }}
+              />
+            </div>
+            <Link to="/settings" className="mt-3 inline-block text-sm font-semibold text-brand-green">
+              {t.nav.settings} →
+            </Link>
+          </div>
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-        <MacroRing
-          label={t.dashboard.calories}
-          value={totals.calories}
-          goal={goals.calories}
-          unit="kcal"
-          accent="#22A06B"
-          soft={theme === 'dark' ? '#1A3D2E' : '#E8F6EF'}
-        />
+      <section className="grid grid-cols-3 gap-2.5 sm:gap-3">
         <MacroRing
           label={t.dashboard.protein}
           value={totals.protein}
@@ -115,47 +130,32 @@ export function DashboardPage() {
         />
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2">
-        <div className="glass-card p-5">
-          <p className="text-sm font-medium text-brand-muted dark:text-white/55">{t.dashboard.water}</p>
-          <p className="mt-2 font-display text-3xl font-bold text-brand-ink dark:text-white">
-            0 <span className="text-base font-semibold text-brand-muted dark:text-white/50">/ {goals.waterMl} ml</span>
-          </p>
-          <p className="mt-2 text-xs text-brand-muted dark:text-white/45">{t.dashboard.waterHint}</p>
-        </div>
-        <div className="glass-card p-5">
-          <p className="text-sm font-medium text-brand-muted dark:text-white/55">{t.dashboard.exercise}</p>
-          <p className="mt-2 font-display text-3xl font-bold text-brand-ink dark:text-white">
-            0{' '}
-            <span className="text-base font-semibold text-brand-muted dark:text-white/50">
-              / {goals.exerciseMin} min
-            </span>
-          </p>
-          <p className="mt-2 text-xs text-brand-muted dark:text-white/45">{t.dashboard.exerciseHint}</p>
-        </div>
-      </section>
-
-      <section className="space-y-4">
+      <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-xl font-semibold text-brand-ink dark:text-white">
+          <h2 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
             {t.dashboard.todaysMeals}
           </h2>
-          <Link to="/history" className="text-sm font-semibold text-brand-green hover:underline">
+          <Link to="/history" className="text-sm font-semibold text-brand-green">
             {t.dashboard.viewAll}
           </Link>
         </div>
         {today.length === 0 ? (
-          <div className="glass-card p-8 text-center">
-            <p className="font-display text-lg font-semibold text-brand-ink dark:text-white">
-              {t.dashboard.noMeals}
-            </p>
-            <p className="mt-1 text-sm text-brand-muted dark:text-white/55">{t.dashboard.noMealsHint}</p>
-            <Link to="/scan" className="btn-primary mt-4">
-              {t.dashboard.openScan}
-            </Link>
-          </div>
+          <Link
+            to="/scan"
+            className="glass-card flex flex-col items-center justify-center gap-3 p-10 text-center transition duration-300 hover:-translate-y-0.5"
+          >
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-green text-2xl text-white shadow-[0_10px_28px_rgba(34,160,107,0.35)]">
+              +
+            </span>
+            <div>
+              <p className="font-display text-lg font-semibold text-brand-ink dark:text-white">
+                {t.dashboard.noMeals}
+              </p>
+              <p className="mt-1 text-sm text-brand-muted dark:text-white/55">{t.dashboard.tapScan}</p>
+            </div>
+          </Link>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {today.map((m) => (
               <MealCard key={m.id} meal={m} onDelete={removeMeal} />
             ))}

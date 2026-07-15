@@ -1,13 +1,5 @@
 import type { MealEntry } from '@/types'
 import { mealTypeLabel, useI18n } from '@/hooks/useI18n'
-import { formatConfidence } from '@/utils/nutrition'
-
-const mealColors: Record<string, string> = {
-  Breakfast: 'bg-brand-orange-soft text-brand-orange dark:bg-brand-orange/20',
-  Lunch: 'bg-brand-green-soft text-brand-green dark:bg-brand-green/20',
-  Dinner: 'bg-brand-blue-soft text-brand-blue dark:bg-brand-blue/20',
-  Snack: 'bg-brand-soft text-brand-muted dark:bg-white/10 dark:text-white/70',
-}
 
 interface MealCardProps {
   meal: MealEntry
@@ -22,45 +14,61 @@ export function MealCard({ meal, onDelete }: MealCardProps) {
   })
 
   return (
-    <article className="glass-card flex gap-4 p-4">
-      {meal.imageDataUrl ? (
-        <img
-          src={meal.imageDataUrl}
-          alt={meal.food}
-          className="h-20 w-20 shrink-0 rounded-2xl object-cover"
-        />
-      ) : (
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-brand-green-soft font-display text-2xl font-bold text-brand-green dark:bg-brand-green/20">
-          {meal.food.slice(0, 1)}
+    <article className="group glass-card overflow-hidden transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_36px_rgba(18,21,28,0.1)]">
+      <div className="flex gap-0 sm:gap-0">
+        <div className="relative h-[5.5rem] w-[5.5rem] shrink-0 overflow-hidden sm:h-28 sm:w-28">
+          {meal.imageDataUrl ? (
+            <img src={meal.imageDataUrl} alt={meal.food} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-green to-emerald-700 font-display text-3xl font-bold text-white">
+              {meal.food.slice(0, 1)}
+            </div>
+          )}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
         </div>
-      )}
-      <div className="min-w-0 flex-1">
-        <div className="mb-1 flex flex-wrap items-center gap-2">
-          <span className={`rounded-lg px-2 py-0.5 text-[11px] font-semibold ${mealColors[meal.mealType]}`}>
-            {mealTypeLabel(locale, meal.mealType)}
-          </span>
-          <span className="text-xs text-brand-muted dark:text-white/50">{time}</span>
-          <span className="text-xs text-brand-muted dark:text-white/50">
-            · {formatConfidence(meal.confidence)}
-          </span>
+
+        <div className="flex min-w-0 flex-1 flex-col justify-between p-3 sm:p-4">
+          <div>
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <span className="rounded-md bg-black/[0.05] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-muted dark:bg-white/10 dark:text-white/60">
+                {mealTypeLabel(locale, meal.mealType)}
+              </span>
+              <span className="tabular text-xs text-brand-muted dark:text-white/45">{time}</span>
+            </div>
+            <h3 className="truncate font-display text-[15px] font-semibold text-brand-ink dark:text-white sm:text-base">
+              {meal.food}
+            </h3>
+          </div>
+          <div className="mt-2 flex items-end justify-between gap-2">
+            <div className="flex flex-wrap gap-1">
+              <span className="rounded-md bg-brand-blue-soft px-1.5 py-0.5 text-[10px] font-bold text-brand-blue dark:bg-brand-blue/20">
+                P {Math.round(meal.protein)}
+              </span>
+              <span className="rounded-md bg-brand-orange-soft px-1.5 py-0.5 text-[10px] font-bold text-brand-orange dark:bg-brand-orange/20">
+                C {Math.round(meal.carbs)}
+              </span>
+              <span className="rounded-md bg-black/[0.05] px-1.5 py-0.5 text-[10px] font-bold text-brand-ink dark:bg-white/10 dark:text-white/70">
+                F {Math.round(meal.fat)}
+              </span>
+            </div>
+            <p className="tabular font-display text-xl font-bold tracking-tight text-brand-ink dark:text-white">
+              {meal.calories}
+              <span className="ml-0.5 text-[10px] font-semibold text-brand-muted">kcal</span>
+            </p>
+          </div>
         </div>
-        <h3 className="truncate font-display text-base font-semibold text-brand-ink dark:text-white">
-          {meal.food}
-        </h3>
-        <p className="mt-1 text-sm text-brand-muted dark:text-white/55">
-          {meal.calories} kcal · P {meal.protein}g · C {meal.carbs}g · F {meal.fat}g · {meal.grams}g
-        </p>
+
+        {onDelete && (
+          <button
+            type="button"
+            onClick={() => onDelete(meal.id)}
+            className="self-stretch border-l border-black/[0.04] px-3 text-xs font-semibold text-brand-muted opacity-70 transition hover:bg-red-50 hover:text-red-600 hover:opacity-100 dark:border-white/10 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+            aria-label={t.meal.delete}
+          >
+            ✕
+          </button>
+        )}
       </div>
-      {onDelete && (
-        <button
-          type="button"
-          onClick={() => onDelete(meal.id)}
-          className="self-start rounded-xl px-2 py-1 text-xs font-medium text-brand-muted hover:bg-red-50 hover:text-red-600 dark:text-white/50 dark:hover:bg-red-500/10 dark:hover:text-red-400"
-          aria-label={t.meal.delete}
-        >
-          {t.meal.delete}
-        </button>
-      )}
     </article>
   )
 }

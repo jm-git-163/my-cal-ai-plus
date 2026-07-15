@@ -25,6 +25,8 @@ export function ScanPage() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [detail, setDetail] = useState<VisionDetail>(settings.visionDetail)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
 
   async function handleFile(file: File) {
     const code = validateImageFile(file)
@@ -124,53 +126,62 @@ export function ScanPage() {
         : t.scan.goalNeutral
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-5 md:space-y-6 lg:max-w-4xl">
+    <div className="mx-auto w-full max-w-2xl space-y-4 md:max-w-3xl md:space-y-5 pb-24 md:pb-0">
       <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight text-brand-ink dark:text-white sm:text-3xl lg:text-4xl">
+        <h1 className="font-display text-2xl font-bold tracking-tight text-brand-ink dark:text-white sm:text-3xl">
           {t.scan.title}
         </h1>
-        <p className="mt-1 text-sm text-brand-muted dark:text-white/60 sm:text-base">{t.scan.subtitle}</p>
+        <p className="mt-1 text-sm text-brand-muted dark:text-white/55">{t.scan.subtitle}</p>
       </div>
 
-      <div className="glass-card space-y-4 p-4 sm:p-5 md:p-6">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <p className="mb-2 text-sm font-medium text-brand-ink dark:text-white">{t.scan.detailLabel}</p>
-            <div className="flex flex-wrap gap-2">
-              {(
-                [
-                  ['low', t.scan.detailLow],
-                  ['high', t.scan.detailHigh],
-                  ['original', t.scan.detailOriginal],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => setDetail(value)}
-                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
-                    detail === value
-                      ? 'bg-brand-green text-white'
-                      : 'bg-black/5 text-brand-ink dark:bg-white/10 dark:text-white'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+      <div className="glass-card space-y-4 p-4 sm:p-5">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="flex w-full items-center justify-between rounded-xl bg-black/[0.03] px-3 py-2.5 text-left text-sm font-semibold text-brand-ink dark:bg-white/5 dark:text-white"
+        >
+          <span>{showAdvanced ? t.scan.hideAdvanced : t.scan.advanced}</span>
+          <span className="text-brand-muted">{showAdvanced ? '−' : '+'}</span>
+        </button>
+
+        {showAdvanced && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="mb-2 text-sm font-medium text-brand-ink dark:text-white">{t.scan.detailLabel}</p>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    ['low', t.scan.detailLow],
+                    ['high', t.scan.detailHigh],
+                    ['original', t.scan.detailOriginal],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setDetail(value)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                      detail === value
+                        ? 'bg-brand-green text-white'
+                        : 'bg-black/5 text-brand-ink dark:bg-white/10 dark:text-white'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <p className="mt-2 text-xs text-brand-muted dark:text-white/45">{t.scan.detailHint}</p>
+            <div>
+              <p className="mb-2 text-sm font-medium text-brand-ink dark:text-white">{t.scan.twoPass}</p>
+              <p className="text-xs text-brand-muted dark:text-white/55">
+                {settings.visionTwoPass ? t.scan.twoPassOn : t.scan.twoPassOff}
+                {' · '}
+                {settings.visionModel || t.scan.modelDefault}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="mb-2 text-sm font-medium text-brand-ink dark:text-white">{t.scan.twoPass}</p>
-            <p className="text-xs text-brand-muted dark:text-white/55">
-              {settings.visionTwoPass ? t.scan.twoPassOn : t.scan.twoPassOff}
-              {' · '}
-              {settings.visionModel || t.scan.modelDefault}
-            </p>
-            <p className="mt-2 text-xs text-brand-muted dark:text-white/45">{t.scan.dualView}</p>
-          </div>
-        </div>
+        )}
 
         <input
           ref={inputRef}
@@ -188,159 +199,84 @@ export function ScanPage() {
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="flex w-full flex-col items-center justify-center gap-3 rounded-card border-2 border-dashed border-brand-green/30 bg-brand-green-soft/40 px-4 py-12 text-center transition hover:border-brand-green/50 dark:bg-brand-green/10 sm:py-16"
+            className="relative flex w-full flex-col items-center justify-center gap-4 overflow-hidden rounded-[22px] border border-dashed border-brand-green/35 bg-gradient-to-b from-brand-green-soft/80 to-white px-4 py-14 text-center transition hover:border-brand-green/55 dark:from-brand-green/15 dark:to-transparent sm:py-16"
           >
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-green text-2xl text-white shadow-soft">
-              +
+            <span className="fab-scan scan-pulse !translate-y-0 !h-16 !w-16">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M7 4H5a1 1 0 0 0-1 1v2M17 4h2a1 1 0 0 1 1 1v2M7 20H5a1 1 0 0 1-1-1v-2M17 20h2a1 1 0 0 0 1-1v-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="12" cy="12" r="3.2" stroke="currentColor" strokeWidth="2" />
+              </svg>
             </span>
-            <span className="font-display text-base font-semibold text-brand-ink dark:text-white sm:text-lg">
-              {t.scan.uploadTitle}
-            </span>
-            <span className="text-sm text-brand-muted dark:text-white/55">{t.scan.uploadHint}</span>
+            <div>
+              <p className="font-display text-lg font-semibold text-brand-ink dark:text-white">
+                {t.scan.uploadTitle}
+              </p>
+              <p className="mt-1 text-sm text-brand-muted dark:text-white/55">{t.scan.uploadHint}</p>
+            </div>
           </button>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-            <figure>
-              <figcaption className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-muted dark:text-white/50">
-                {t.scan.original}
-              </figcaption>
-              <img src={preview} alt="Original meal" className="aspect-square w-full rounded-2xl object-cover" />
-            </figure>
-            <figure>
-              <figcaption className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-muted dark:text-white/50">
-                {t.scan.preprocess}
-              </figcaption>
-              <img
-                src={processed ?? preview}
-                alt="Preprocessed meal"
-                className="aspect-square w-full rounded-2xl object-cover"
-              />
-            </figure>
-          </div>
-        )}
-
-        {busy && (
-          <div className="rounded-2xl bg-brand-soft px-4 py-3 text-sm font-medium text-brand-ink dark:bg-white/10 dark:text-white">
-            {stage === 'preprocessing' ? t.scan.preprocessing : t.scan.analyzing}
+          <div className="relative overflow-hidden rounded-[22px]">
+            <img
+              src={processed ?? preview}
+              alt="Meal"
+              className="aspect-[4/3] w-full object-cover sm:aspect-video"
+            />
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent p-4 pt-16">
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/70">
+                {busy ? (stage === 'preprocessing' ? t.scan.preprocessing : t.scan.analyzing) : t.scan.preprocess}
+              </p>
+            </div>
+            {busy && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/25 backdrop-blur-[2px]">
+                <div className="rounded-2xl bg-white/95 px-5 py-3 text-sm font-semibold text-brand-ink shadow-lg dark:bg-[#121820]/95 dark:text-white">
+                  {stage === 'preprocessing' ? t.scan.preprocessing : t.scan.analyzing}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {error && (
           <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
             {error}
-            <p className="mt-1 text-xs text-red-600/80 dark:text-red-300/80">{t.scan.tip}</p>
           </div>
         )}
 
         {result && stage === 'result' && (
-          <div className="space-y-4 rounded-2xl border border-brand-green/20 bg-brand-green-soft/40 p-4 dark:bg-brand-green/10 sm:p-5">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <h2 className="font-display text-xl font-bold text-brand-ink dark:text-white sm:text-2xl">
-                  {result.food}
-                </h2>
-                <p className="text-sm text-brand-muted dark:text-white/55">
-                  ~{result.grams}g · {t.scan.confidence} {formatConfidence(result.confidence)}
-                  {result.twoPass ? ' · 2-pass' : ''}
-                  {result.model ? ` · ${result.model}` : ''}
+          <div className="space-y-4">
+            <div className="rounded-[22px] bg-gradient-to-br from-brand-green-soft to-white p-5 dark:from-brand-green/20 dark:to-white/5">
+              <p className="text-xs font-bold uppercase tracking-wide text-brand-green">{result.food}</p>
+              <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
+                <p className="tabular font-display text-5xl font-bold tracking-tight text-brand-ink dark:text-white">
+                  {result.calories}
+                  <span className="ml-1 text-base font-semibold text-brand-muted">kcal</span>
+                </p>
+                <p className="tabular mb-1 text-sm font-medium text-brand-muted">
+                  {result.grams}g · {formatConfidence(result.confidence)}
                 </p>
               </div>
-              <p className="font-display text-2xl font-bold text-brand-green sm:text-3xl">{result.calories} kcal</p>
+              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-xl bg-white/80 py-2.5 dark:bg-white/10">
+                  <p className="text-[10px] font-bold text-brand-blue">P</p>
+                  <p className="tabular font-semibold text-brand-ink dark:text-white">{result.protein}g</p>
+                </div>
+                <div className="rounded-xl bg-white/80 py-2.5 dark:bg-white/10">
+                  <p className="text-[10px] font-bold text-brand-orange">C</p>
+                  <p className="tabular font-semibold text-brand-ink dark:text-white">{result.carbs}g</p>
+                </div>
+                <div className="rounded-xl bg-white/80 py-2.5 dark:bg-white/10">
+                  <p className="text-[10px] font-bold text-brand-muted">F</p>
+                  <p className="tabular font-semibold text-brand-ink dark:text-white">{result.fat}g</p>
+                </div>
+              </div>
             </div>
 
             {impact?.message && (
-              <div className={`rounded-2xl border px-3 py-3 text-sm ${impactClass}`}>
-                <p className="text-xs font-semibold uppercase tracking-wide opacity-80">{t.scan.goalCoach}</p>
-                <p className="mt-1 font-semibold">{impactLabel}</p>
+              <div className={`rounded-2xl border px-4 py-3 text-sm ${impactClass}`}>
+                <p className="font-bold">{impactLabel}</p>
                 <p className="mt-1 opacity-90">{impact.message}</p>
               </div>
             )}
-
-            <p className="text-xs text-brand-muted dark:text-white/45">{t.scan.disclaimer}</p>
-
-            {result.is_unclear && (
-              <p className="rounded-xl bg-brand-orange-soft/80 px-3 py-2 text-xs font-medium text-brand-orange dark:bg-brand-orange/20">
-                {t.scan.unclear}
-              </p>
-            )}
-
-            {result.fieldConfidence && (
-              <div className="rounded-2xl bg-white/70 p-3 dark:bg-white/5 sm:p-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-muted dark:text-white/50">
-                  {t.scan.fieldConfidence}
-                </p>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <ConfidenceBar label={t.scan.confFood} value={result.fieldConfidence.food} />
-                  <ConfidenceBar label={t.scan.confGrams} value={result.fieldConfidence.grams} />
-                  <ConfidenceBar label={t.scan.confCal} value={result.fieldConfidence.calories} />
-                  <ConfidenceBar label={t.scan.confP} value={result.fieldConfidence.protein} />
-                  <ConfidenceBar label={t.scan.confC} value={result.fieldConfidence.carbs} />
-                  <ConfidenceBar label={t.scan.confF} value={result.fieldConfidence.fat} />
-                </div>
-              </div>
-            )}
-
-            {result.portionBasis && (
-              <div className="rounded-xl bg-white/70 px-3 py-2 text-sm dark:bg-white/10">
-                <p className="text-xs font-semibold uppercase tracking-wide text-brand-muted dark:text-white/50">
-                  {t.scan.portionBasis}
-                </p>
-                <p className="mt-1 text-brand-ink dark:text-white/85">{result.portionBasis}</p>
-              </div>
-            )}
-
-            {result.assumptions && result.assumptions.length > 0 && (
-              <div className="rounded-xl border border-brand-orange/20 bg-brand-orange-soft/50 px-3 py-2 dark:bg-brand-orange/10">
-                <p className="text-xs font-semibold uppercase tracking-wide text-brand-orange">{t.scan.assumptions}</p>
-                <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-brand-ink dark:text-white/80">
-                  {result.assumptions.map((a) => (
-                    <li key={a}>{a}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {result.tip && (
-              <div className="rounded-xl bg-white/70 px-3 py-2 text-sm dark:bg-white/10">
-                <p className="text-xs font-semibold uppercase tracking-wide text-brand-muted dark:text-white/50">
-                  {t.scan.aiTip}
-                </p>
-                <p className="mt-1 text-brand-ink dark:text-white/85">{result.tip}</p>
-              </div>
-            )}
-
-            {result.ingredients && result.ingredients.length > 0 && (
-              <div>
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-muted dark:text-white/50">
-                  {t.scan.ingredients}
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {result.ingredients.map((ing) => (
-                    <span
-                      key={ing}
-                      className="rounded-lg bg-white/80 px-2 py-1 text-xs font-medium text-brand-ink dark:bg-white/10 dark:text-white/80"
-                    >
-                      {ing}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-3 gap-2 text-center text-sm">
-              <div className="rounded-xl bg-white/80 px-2 py-3 dark:bg-white/10">
-                <p className="text-brand-muted dark:text-white/50">{t.dashboard.protein}</p>
-                <p className="font-semibold text-brand-blue">{result.protein}g</p>
-              </div>
-              <div className="rounded-xl bg-white/80 px-2 py-3 dark:bg-white/10">
-                <p className="text-brand-muted dark:text-white/50">{t.dashboard.carbs}</p>
-                <p className="font-semibold text-brand-orange">{result.carbs}g</p>
-              </div>
-              <div className="rounded-xl bg-white/80 px-2 py-3 dark:bg-white/10">
-                <p className="text-brand-muted dark:text-white/50">{t.dashboard.fat}</p>
-                <p className="font-semibold text-brand-ink dark:text-white">{result.fat}g</p>
-              </div>
-            </div>
 
             <label className="block text-sm font-medium text-brand-ink dark:text-white">
               {t.scan.mealType}
@@ -356,8 +292,45 @@ export function ScanPage() {
               </select>
             </label>
 
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn-primary" disabled={saving} onClick={() => void onSave()}>
+            <button
+              type="button"
+              onClick={() => setShowDetails((v) => !v)}
+              className="w-full rounded-xl bg-black/[0.03] px-3 py-2.5 text-left text-sm font-semibold text-brand-ink dark:bg-white/5 dark:text-white"
+            >
+              {showDetails ? t.scan.hideAdvanced : t.scan.assumptions} / {t.scan.fieldConfidence}
+            </button>
+
+            {showDetails && (
+              <div className="space-y-3">
+                {result.portionBasis && (
+                  <div className="rounded-xl bg-white/70 px-3 py-2 text-sm dark:bg-white/10">
+                    <p className="text-xs font-bold text-brand-muted">{t.scan.portionBasis}</p>
+                    <p className="mt-1">{result.portionBasis}</p>
+                  </div>
+                )}
+                {result.assumptions && result.assumptions.length > 0 && (
+                  <ul className="list-disc space-y-1 rounded-xl border border-brand-orange/20 bg-brand-orange-soft/40 px-5 py-3 text-sm dark:bg-brand-orange/10">
+                    {result.assumptions.map((a) => (
+                      <li key={a}>{a}</li>
+                    ))}
+                  </ul>
+                )}
+                {result.fieldConfidence && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <ConfidenceBar label={t.scan.confFood} value={result.fieldConfidence.food} />
+                    <ConfidenceBar label={t.scan.confGrams} value={result.fieldConfidence.grams} />
+                    <ConfidenceBar label={t.scan.confCal} value={result.fieldConfidence.calories} />
+                    <ConfidenceBar label={t.scan.confP} value={result.fieldConfidence.protein} />
+                    <ConfidenceBar label={t.scan.confC} value={result.fieldConfidence.carbs} />
+                    <ConfidenceBar label={t.scan.confF} value={result.fieldConfidence.fat} />
+                  </div>
+                )}
+                {result.tip && <p className="text-sm text-brand-muted dark:text-white/60">{result.tip}</p>}
+              </div>
+            )}
+
+            <div className="hidden gap-2 md:flex">
+              <button type="button" className="btn-primary flex-1" disabled={saving} onClick={() => void onSave()}>
                 {saving ? t.scan.saving : t.scan.save}
               </button>
               <button type="button" className="btn-secondary" onClick={reset}>
@@ -368,11 +341,25 @@ export function ScanPage() {
         )}
 
         {preview && !busy && stage !== 'result' && (
-          <button type="button" className="btn-secondary" onClick={reset}>
+          <button type="button" className="btn-secondary w-full" onClick={reset}>
             {t.scan.chooseOther}
           </button>
         )}
       </div>
+
+      {/* Mobile sticky save bar */}
+      {result && stage === 'result' && (
+        <div className="fixed inset-x-0 bottom-[4.75rem] z-30 border-t border-black/[0.05] bg-white/95 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-[#07090c]/95 md:hidden safe-bottom">
+          <div className="mx-auto flex max-w-lg gap-2">
+            <button type="button" className="btn-secondary" onClick={reset}>
+              {t.scan.scanAnother}
+            </button>
+            <button type="button" className="btn-primary flex-1" disabled={saving} onClick={() => void onSave()}>
+              {saving ? t.scan.saving : t.scan.saveQuick}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

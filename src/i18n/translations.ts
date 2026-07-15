@@ -39,6 +39,9 @@ export const translations = {
       noMeals: 'No meals yet',
       noMealsHint: 'Upload a photo to get started with AI Vision.',
       openScan: 'Open Food Scan',
+      remaining: '{n} kcal left today',
+      overGoal: 'Over daily goal',
+      tapScan: 'Tap to scan a meal',
     },
     scan: {
       title: 'Food Scan',
@@ -97,6 +100,9 @@ export const translations = {
       confP: 'Protein',
       confF: 'Fat',
       confC: 'Carbs',
+      advanced: 'Advanced options',
+      hideAdvanced: 'Hide options',
+      saveQuick: 'Save',
     },
     coach: {
       title: 'AI Coach',
@@ -202,6 +208,9 @@ export const translations = {
       noMeals: '아직 식사가 없습니다',
       noMealsHint: '사진을 올려 AI Vision으로 시작해 보세요.',
       openScan: '음식 스캔 열기',
+      remaining: '오늘 {n} kcal 남음',
+      overGoal: '하루 목표 초과',
+      tapScan: '탭해서 식사 스캔',
     },
     scan: {
       title: '음식 스캔',
@@ -260,6 +269,9 @@ export const translations = {
       confP: '단백질',
       confF: '지방',
       confC: '탄수화물',
+      advanced: '고급 옵션',
+      hideAdvanced: '옵션 숨기기',
+      saveQuick: '저장',
     },
     coach: {
       title: 'AI 코치',
