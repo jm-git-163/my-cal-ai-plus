@@ -1,6 +1,7 @@
 /**
  * CNN-inspired client-side preprocess before GPT Vision.
- * Resize → contrast → Sobel-like edge blend → mild denoise.
+ * Resize first (docs: control GPT-5.6 token/latency vs detail=original),
+ * then contrast → Sobel-like edge blend → mild denoise.
  */
 
 export interface PreprocessOptions {
@@ -82,7 +83,7 @@ export async function preprocessImage(
   fileOrDataUrl: File | string,
   options: PreprocessOptions = {},
 ): Promise<string> {
-  const { maxSize = 1024, contrast = 1.15, edgeStrength = 0.18 } = options
+  const { maxSize = 1536, contrast = 1.15, edgeStrength = 0.18 } = options
 
   const src =
     typeof fileOrDataUrl === 'string'
@@ -114,6 +115,34 @@ export async function preprocessImage(
 
   ctx.putImageData(imageData, 0, 0)
   return canvas.toDataURL('image/jpeg', 0.88)
+}
+
+export async function resizeForVision(
+  fileOrDataUrl: File | string,
+  maxSize = 1536,
+): Promise<string> {
+  const src =
+    typeof fileOrDataUrl === 'string'
+      ? fileOrDataUrl
+      : await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = () => reject(new Error('Failed to read file'))
+          reader.readAsDataURL(fileOrDataUrl)
+        })
+
+  const img = await loadImage(src)
+  const scale = Math.min(1, maxSize / Math.max(img.width, img.height))
+  const width = Math.max(1, Math.round(img.width * scale))
+  const height = Math.max(1, Math.round(img.height * scale))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Canvas not supported')
+  ctx.drawImage(img, 0, 0, width, height)
+  return canvas.toDataURL('image/jpeg', 0.9)
 }
 
 export function guessMealType(date = new Date()): import('@/types').MealType {

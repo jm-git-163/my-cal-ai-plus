@@ -2,10 +2,10 @@ import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { MealType, NutritionResult } from '@/types'
 import { useI18n } from '@/hooks/useI18n'
-import { analyzeFoodImage } from '@/services/vision'
+import { analyzeFoodImage, type VisionDetail, validateImageFile } from '@/services/vision'
 import { useAppStore } from '@/store/useAppStore'
 import { formatConfidence } from '@/utils/nutrition'
-import { guessMealType, preprocessImage } from '@/utils/preprocess'
+import { guessMealType, preprocessImage, resizeForVision } from '@/utils/preprocess'
 
 type Stage = 'idle' | 'preprocessing' | 'analyzing' | 'result' | 'error'
 
@@ -22,8 +22,21 @@ export function ScanPage() {
   const [mealType, setMealType] = useState<MealType>(guessMealType())
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [detail, setDetail] = useState<VisionDetail>('high')
 
   async function handleFile(file: File) {
+    const code = validateImageFile(file)
+    if (code === 'UNSUPPORTED_TYPE') {
+      setStage('error')
+      setError(t.scan.unsupportedType)
+      return
+    }
+    if (code === 'TOO_LARGE') {
+      setStage('error')
+      setError(t.scan.tooLarge)
+      return
+    }
+
     setError(null)
     setResult(null)
     setStage('preprocessing')
@@ -37,11 +50,20 @@ export function ScanPage() {
       })
       setPreview(rawUrl)
 
-      const enhanced = await preprocessImage(file)
+      // Docs: resize client-side to control GPT-5.6 token/latency vs detail=original
+      const [visionOriginal, enhanced] = await Promise.all([
+        resizeForVision(file, 1536),
+        preprocessImage(file, { maxSize: 1536 }),
+      ])
       setProcessed(enhanced)
 
       setStage('analyzing')
-      const nutrition = await analyzeFoodImage(enhanced, locale)
+      const nutrition = await analyzeFoodImage({
+        image: visionOriginal,
+        preprocess: enhanced,
+        locale,
+        detail,
+      })
       setResult(nutrition)
       setMealType(guessMealType())
       setStage('result')
@@ -91,10 +113,39 @@ export function ScanPage() {
       </div>
 
       <div className="glass-card space-y-4 p-5 sm:p-6">
+        <div>
+          <p className="mb-2 text-sm font-medium text-brand-ink dark:text-white">{t.scan.detailLabel}</p>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                ['low', t.scan.detailLow],
+                ['high', t.scan.detailHigh],
+                ['original', t.scan.detailOriginal],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                disabled={busy}
+                onClick={() => setDetail(value)}
+                className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                  detail === value
+                    ? 'bg-brand-green text-white'
+                    : 'bg-black/5 text-brand-ink dark:bg-white/10 dark:text-white'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-brand-muted dark:text-white/45">{t.scan.detailHint}</p>
+          <p className="mt-1 text-xs text-brand-muted dark:text-white/45">{t.scan.dualView}</p>
+        </div>
+
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
           capture="environment"
           className="hidden"
           onChange={(e) => {
@@ -158,15 +209,30 @@ export function ScanPage() {
                 <h2 className="font-display text-xl font-bold text-brand-ink dark:text-white">{result.food}</h2>
                 <p className="text-sm text-brand-muted dark:text-white/55">
                   ~{result.grams}g · {t.scan.confidence} {formatConfidence(result.confidence)}
+                  {result.image_quality ? ` · ${t.scan.imageQuality}: ${result.image_quality}` : ''}
+                  {result.detail ? ` · detail=${result.detail}` : ''}
                 </p>
               </div>
               <p className="font-display text-2xl font-bold text-brand-green">{result.calories} kcal</p>
             </div>
+
+            <p className="text-xs text-brand-muted dark:text-white/45">{t.scan.disclaimer}</p>
+
             {result.is_unclear && (
               <p className="rounded-xl bg-brand-orange-soft/80 px-3 py-2 text-xs font-medium text-brand-orange dark:bg-brand-orange/20">
                 {t.scan.unclear}
               </p>
             )}
+
+            {result.portion_note && (
+              <div className="rounded-xl bg-white/70 px-3 py-2 text-sm dark:bg-white/10">
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand-muted dark:text-white/50">
+                  {t.scan.portionNote}
+                </p>
+                <p className="mt-1 text-brand-ink dark:text-white/85">{result.portion_note}</p>
+              </div>
+            )}
+
             {result.tip && (
               <div className="rounded-xl bg-white/70 px-3 py-2 text-sm dark:bg-white/10">
                 <p className="text-xs font-semibold uppercase tracking-wide text-brand-muted dark:text-white/50">
@@ -175,6 +241,34 @@ export function ScanPage() {
                 <p className="mt-1 text-brand-ink dark:text-white/85">{result.tip}</p>
               </div>
             )}
+
+            {result.items && result.items.length > 0 && (
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-muted dark:text-white/50">
+                  {t.scan.multiItems}
+                </p>
+                <ul className="space-y-1 text-sm text-brand-ink dark:text-white/80">
+                  {result.items.map((it) => (
+                    <li key={`${it.name}-${it.calories}`} className="flex justify-between gap-2 rounded-lg bg-white/70 px-3 py-2 dark:bg-white/10">
+                      <span>{it.name}</span>
+                      <span className="text-brand-muted dark:text-white/50">
+                        {it.grams}g · {it.calories} kcal
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {result.visible_text && (
+              <div className="rounded-xl bg-white/70 px-3 py-2 text-sm dark:bg-white/10">
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand-muted dark:text-white/50">
+                  {t.scan.visibleText}
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-brand-ink dark:text-white/85">{result.visible_text}</p>
+              </div>
+            )}
+
             {result.ingredients && result.ingredients.length > 0 && (
               <div>
                 <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-muted dark:text-white/50">
@@ -192,6 +286,7 @@ export function ScanPage() {
                 </div>
               </div>
             )}
+
             <div className="grid grid-cols-3 gap-2 text-center text-sm">
               <div className="rounded-xl bg-white/80 px-2 py-3 dark:bg-white/10">
                 <p className="text-brand-muted dark:text-white/50">{t.dashboard.protein}</p>
@@ -206,6 +301,7 @@ export function ScanPage() {
                 <p className="font-semibold text-brand-ink dark:text-white">{result.fat}g</p>
               </div>
             </div>
+
             <label className="block text-sm font-medium text-brand-ink dark:text-white">
               {t.scan.mealType}
               <select
@@ -219,6 +315,7 @@ export function ScanPage() {
                 <option value="Snack">{t.scan.snack}</option>
               </select>
             </label>
+
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn-primary" disabled={saving} onClick={() => void onSave()}>
                 {saving ? t.scan.saving : t.scan.save}

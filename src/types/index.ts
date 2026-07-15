@@ -2,6 +2,12 @@ import type { Locale, ThemeMode } from '@/i18n/translations'
 
 export type MealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack'
 
+export interface FoodItemEstimate {
+  name: string
+  grams: number
+  calories: number
+}
+
 export interface NutritionResult {
   food: string
   grams: number
@@ -13,6 +19,12 @@ export interface NutritionResult {
   ingredients?: string[]
   tip?: string
   is_unclear?: boolean
+  items?: FoodItemEstimate[]
+  visible_text?: string
+  image_quality?: 'low' | 'medium' | 'high'
+  portion_note?: string
+  detail?: string
+  image_count?: number
 }
 
 export interface CoachResult {
