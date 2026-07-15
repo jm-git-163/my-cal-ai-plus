@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { MealType, NutritionResult, VisionDetail } from '@/types'
+import type { MealType, NutritionResult } from '@/types'
 import { ConfidenceBar } from '@/components/ConfidenceBar'
 import { useI18n } from '@/hooks/useI18n'
 import { analyzeFoodImage, validateImageFile } from '@/services/vision'
@@ -24,8 +24,6 @@ export function ScanPage() {
   const [mealType, setMealType] = useState<MealType>(guessMealType())
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [detail, setDetail] = useState<VisionDetail>(settings.visionDetail)
-  const [showAdvanced, setShowAdvanced] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
 
   async function handleFile(file: File) {
@@ -65,9 +63,6 @@ export function ScanPage() {
         image: visionOriginal,
         preprocess: enhanced,
         locale,
-        detail,
-        model: settings.visionModel || undefined,
-        twoPass: settings.visionTwoPass,
         currentWeightKg: settings.currentWeightKg,
         goalWeightKg: settings.goalWeightKg,
         calorieGoal: settings.goals.calories,
@@ -135,54 +130,6 @@ export function ScanPage() {
       </div>
 
       <div className="glass-card space-y-4 p-4 sm:p-5">
-        <button
-          type="button"
-          onClick={() => setShowAdvanced((v) => !v)}
-          className="flex w-full items-center justify-between rounded-xl bg-black/[0.03] px-3 py-2.5 text-left text-sm font-semibold text-brand-ink dark:bg-white/5 dark:text-white"
-        >
-          <span>{showAdvanced ? t.scan.hideAdvanced : t.scan.advanced}</span>
-          <span className="text-brand-muted">{showAdvanced ? '−' : '+'}</span>
-        </button>
-
-        {showAdvanced && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <p className="mb-2 text-sm font-medium text-brand-ink dark:text-white">{t.scan.detailLabel}</p>
-              <div className="flex flex-wrap gap-2">
-                {(
-                  [
-                    ['low', t.scan.detailLow],
-                    ['high', t.scan.detailHigh],
-                    ['original', t.scan.detailOriginal],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setDetail(value)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                      detail === value
-                        ? 'bg-brand-green text-white'
-                        : 'bg-black/5 text-brand-ink dark:bg-white/10 dark:text-white'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="mb-2 text-sm font-medium text-brand-ink dark:text-white">{t.scan.twoPass}</p>
-              <p className="text-xs text-brand-muted dark:text-white/55">
-                {settings.visionTwoPass ? t.scan.twoPassOn : t.scan.twoPassOff}
-                {' · '}
-                {settings.visionModel || t.scan.modelDefault}
-              </p>
-            </div>
-          </div>
-        )}
-
         <input
           ref={inputRef}
           type="file"
@@ -222,9 +169,11 @@ export function ScanPage() {
               className="aspect-[4/3] w-full object-cover sm:aspect-video"
             />
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent p-4 pt-16">
-              <p className="text-xs font-semibold uppercase tracking-wide text-white/70">
-                {busy ? (stage === 'preprocessing' ? t.scan.preprocessing : t.scan.analyzing) : t.scan.preprocess}
-              </p>
+              {busy && (
+                <p className="text-xs font-semibold uppercase tracking-wide text-white/70">
+                  {stage === 'preprocessing' ? t.scan.preprocessing : t.scan.analyzing}
+                </p>
+              )}
             </div>
             {busy && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/25 backdrop-blur-[2px]">
@@ -349,7 +298,7 @@ export function ScanPage() {
 
       {/* Mobile sticky save bar */}
       {result && stage === 'result' && (
-        <div className="fixed inset-x-0 bottom-[4.75rem] z-30 border-t border-black/[0.05] bg-white/95 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-[#07090c]/95 md:hidden safe-bottom">
+        <div className="fixed inset-x-0 bottom-[4.75rem] z-30 border-t border-brand-ink/10 bg-[#EEF3F0]/95 px-4 py-3 shadow-[0_-4px_16px_rgba(18,21,28,0.06)] backdrop-blur-xl dark:border-white/10 dark:bg-[#10161c]/95 md:hidden safe-bottom">
           <div className="mx-auto flex max-w-lg gap-2">
             <button type="button" className="btn-secondary" onClick={reset}>
               {t.scan.scanAnother}

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from '@/components/AppLayout'
+import { OpenInChromeGate } from '@/components/OpenInChromeGate'
 import { useI18n } from '@/hooks/useI18n'
 import { CoachPage } from '@/pages/CoachPage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -20,24 +21,28 @@ export default function App() {
 
   if (!hydrated) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-hero dark:bg-hero-dark">
-        <p className="font-display text-lg font-semibold text-brand-ink dark:text-white">{t.loading}</p>
-      </div>
+      <OpenInChromeGate>
+        <div className="flex min-h-screen items-center justify-center bg-hero dark:bg-hero-dark">
+          <p className="font-display text-lg font-semibold text-brand-ink dark:text-white">{t.loading}</p>
+        </div>
+      </OpenInChromeGate>
     )
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route index element={<DashboardPage />} />
-          <Route path="scan" element={<ScanPage />} />
-          <Route path="history" element={<HistoryPage />} />
-          <Route path="coach" element={<CoachPage />} />
-          <Route path="settings" element={<SettingsPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <OpenInChromeGate>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="scan" element={<ScanPage />} />
+            <Route path="history" element={<HistoryPage />} />
+            <Route path="coach" element={<CoachPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </OpenInChromeGate>
   )
 }

@@ -3,6 +3,8 @@ import type { Locale, ThemeMode } from '@/i18n/translations'
 export type MealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack'
 export type VisionDetail = 'low' | 'high' | 'original' | 'auto'
 export type GoalVerdict = 'help' | 'caution' | 'neutral'
+export type BiologicalSex = 'female' | 'male' | 'unspecified'
+export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active'
 
 export interface FoodItemEstimate {
   name: string
@@ -98,6 +100,13 @@ export interface UserSettings {
   goals: DailyGoals
   currentWeightKg: number
   goalWeightKg: number
+  /** Used for calorie recommendation (Mifflin–St Jeor). */
+  sex: BiologicalSex
+  heightCm: number
+  age: number
+  activityLevel: ActivityLevel
+  /** True after user applied the built-in recommender at least once. */
+  goalsFromRecommend: boolean
   locale: Locale
   theme: ThemeMode
   visionModel: string
@@ -119,6 +128,11 @@ export const DEFAULT_SETTINGS: UserSettings = {
   goals: DEFAULT_GOALS,
   currentWeightKg: 70,
   goalWeightKg: 65,
+  sex: 'unspecified',
+  heightCm: 165,
+  age: 35,
+  activityLevel: 'light',
+  goalsFromRecommend: false,
   locale: 'ko',
   theme: 'light',
   visionModel: '',
@@ -133,22 +147,29 @@ export function weightGoalMode(current: number, goal: number): 'lose' | 'gain' |
   return 'maintain'
 }
 
+const SEX_OK = new Set(['female', 'male', 'unspecified'])
+const ACTIVITY_OK = new Set(['sedentary', 'light', 'moderate', 'active', 'very_active'])
+
 export function normalizeSettings(raw: Partial<UserSettings> | undefined): UserSettings {
+  const sex = SEX_OK.has(String(raw?.sex)) ? (raw!.sex as BiologicalSex) : DEFAULT_SETTINGS.sex
+  const activityLevel = ACTIVITY_OK.has(String(raw?.activityLevel))
+    ? (raw!.activityLevel as ActivityLevel)
+    : DEFAULT_SETTINGS.activityLevel
   return {
     name: raw?.name || DEFAULT_SETTINGS.name,
     goals: { ...DEFAULT_GOALS, ...raw?.goals },
     currentWeightKg: Number(raw?.currentWeightKg) > 0 ? Number(raw?.currentWeightKg) : DEFAULT_SETTINGS.currentWeightKg,
     goalWeightKg: Number(raw?.goalWeightKg) > 0 ? Number(raw?.goalWeightKg) : DEFAULT_SETTINGS.goalWeightKg,
+    sex,
+    heightCm: Number(raw?.heightCm) > 0 ? Number(raw?.heightCm) : DEFAULT_SETTINGS.heightCm,
+    age: Number(raw?.age) > 0 ? Number(raw?.age) : DEFAULT_SETTINGS.age,
+    activityLevel,
+    goalsFromRecommend: Boolean(raw?.goalsFromRecommend),
     locale: raw?.locale === 'en' ? 'en' : 'ko',
     theme: raw?.theme === 'dark' ? 'dark' : 'light',
-    visionModel: typeof raw?.visionModel === 'string' ? raw.visionModel : '',
-    visionTwoPass: raw?.visionTwoPass !== false,
-    visionDetail:
-      raw?.visionDetail === 'low' ||
-      raw?.visionDetail === 'original' ||
-      raw?.visionDetail === 'auto' ||
-      raw?.visionDetail === 'high'
-        ? raw.visionDetail
-        : 'high',
+    // Vision pipeline is app-controlled for reliability — ignore stored overrides.
+    visionModel: '',
+    visionTwoPass: true,
+    visionDetail: 'high',
   }
 }

@@ -1,4 +1,4 @@
-import type { NutritionResult, VisionDetail } from '@/types'
+import type { NutritionResult } from '@/types'
 
 const ALLOWED = /^image\/(png|jpeg|jpg|webp|gif)$/i
 
@@ -12,9 +12,6 @@ export async function analyzeFoodImage(params: {
   image: string
   preprocess?: string
   locale?: 'ko' | 'en'
-  detail?: VisionDetail
-  model?: string
-  twoPass?: boolean
   currentWeightKg?: number
   goalWeightKg?: number
   calorieGoal?: number
@@ -30,9 +27,7 @@ export async function analyzeFoodImage(params: {
       images,
       image: params.image,
       locale: params.locale ?? 'ko',
-      detail: params.detail ?? 'high',
-      model: params.model || undefined,
-      twoPass: params.twoPass !== false,
+      // Server locks model / twoPass / detail for reliability.
       currentWeightKg: params.currentWeightKg,
       goalWeightKg: params.goalWeightKg,
       calorieGoal: params.calorieGoal,

@@ -68,7 +68,7 @@ html.dark body {
   }
 
   .fab-scan {
-    @apply relative flex h-[4.25rem] w-[4.25rem] -translate-y-5 items-center justify-center rounded-full bg-brand-green text-white shadow-[0_12px_32px_rgba(34,160,107,0.45)] transition active:scale-95;
+    @apply relative flex h-[4.25rem] w-[4.25rem] -translate-y-5 items-center justify-center rounded-full border-[3px] border-[#EEF3F0] bg-brand-green text-white shadow-[0_12px_32px_rgba(34,160,107,0.45)] transition active:scale-95 dark:border-[#10161c];
   }
 }
 

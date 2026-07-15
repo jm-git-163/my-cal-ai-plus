@@ -124,11 +124,6 @@ function parseDataUrl(dataUrl: string): { mime: string } | null {
   return { mime: m[1].toLowerCase() }
 }
 
-function normalizeDetail(raw: unknown): VisionDetail {
-  if (raw === 'low' || raw === 'high' || raw === 'original' || raw === 'auto') return raw
-  return 'high'
-}
-
 function clamp01(n: number) {
   return Math.min(1, Math.max(0, n))
 }
@@ -160,10 +155,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       calorieGoal?: number
     }
 
-    const detail = normalizeDetail(body.detail)
-    const twoPass = body.twoPass !== false
+    const detail = 'high' as VisionDetail
+    const twoPass = true
     const lang = body.locale === 'en' ? 'English' : 'Korean'
-    const model = (body.model && String(body.model).trim()) || getModel()
+    const model = getModel()
     const mode = weightMode(body.currentWeightKg, body.goalWeightKg)
 
     const candidates = [

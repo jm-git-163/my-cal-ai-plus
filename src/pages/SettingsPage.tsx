@@ -1,7 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import type { DailyGoals, UserSettings, VisionDetail } from '@/types'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import type { ActivityLevel, BiologicalSex, DailyGoals, UserSettings } from '@/types'
+import { NumberField } from '@/components/NumberField'
 import { useI18n } from '@/hooks/useI18n'
+import { tReplace } from '@/i18n/translations'
 import { useAppStore } from '@/store/useAppStore'
+import { recommendDailyGoals } from '@/utils/recommendGoals'
 
 export function SettingsPage() {
   const { t } = useI18n()
@@ -11,24 +14,72 @@ export function SettingsPage() {
   const setTheme = useAppStore((s) => s.setTheme)
   const [form, setForm] = useState<UserSettings>(settings)
   const [saved, setSaved] = useState(false)
+  const [recommendedJustNow, setRecommendedJustNow] = useState(false)
 
   useEffect(() => {
     setForm(settings)
   }, [settings])
 
+  const preview = useMemo(() => recommendDailyGoals(form), [form])
+
+  function patchForm(partial: Partial<UserSettings>) {
+    setForm((prev) => ({ ...prev, ...partial }))
+    setSaved(false)
+    setRecommendedJustNow(false)
+  }
+
   function setGoal<K extends keyof DailyGoals>(key: K, value: number) {
     setForm((prev) => ({
       ...prev,
       goals: { ...prev.goals, [key]: value },
+      goalsFromRecommend: false,
     }))
     setSaved(false)
+    setRecommendedJustNow(false)
+  }
+
+  function applyRecommend() {
+    const rec = recommendDailyGoals(form)
+    setForm((prev) => ({
+      ...prev,
+      goals: rec.goals,
+      goalsFromRecommend: true,
+    }))
+    setSaved(false)
+    setRecommendedJustNow(true)
   }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     await updateSettings(form)
     setSaved(true)
+    setRecommendedJustNow(false)
   }
+
+  const modeLabel =
+    preview.mode === 'lose'
+      ? t.settings.modeLose
+      : preview.mode === 'gain'
+        ? t.settings.modeGain
+        : t.settings.modeMaintain
+
+  const adjustLabel =
+    preview.calorieAdjust === 0
+      ? '±0'
+      : preview.calorieAdjust > 0
+        ? `+${preview.calorieAdjust}`
+        : String(preview.calorieAdjust)
+
+  const summary = tReplace(t.settings.recommendSummary, {
+    bmr: String(preview.bmr),
+    tdee: String(preview.tdee),
+    mode: modeLabel,
+    adjust: adjustLabel,
+    cal: String(preview.goals.calories),
+    p: String(preview.goals.protein),
+    c: String(preview.goals.carbs),
+    f: String(preview.goals.fat),
+  })
 
   const goalFields = [
     ['calories', t.settings.calories],
@@ -38,6 +89,20 @@ export function SettingsPage() {
     ['waterMl', t.settings.water],
     ['exerciseMin', t.settings.exercise],
   ] as const
+
+  const sexOptions: { value: BiologicalSex; label: string }[] = [
+    { value: 'female', label: t.settings.sexFemale },
+    { value: 'male', label: t.settings.sexMale },
+    { value: 'unspecified', label: t.settings.sexUnspecified },
+  ]
+
+  const activityOptions: { value: ActivityLevel; label: string }[] = [
+    { value: 'sedentary', label: t.settings.activitySedentary },
+    { value: 'light', label: t.settings.activityLight },
+    { value: 'moderate', label: t.settings.activityModerate },
+    { value: 'active', label: t.settings.activityActive },
+    { value: 'very_active', label: t.settings.activityVeryActive },
+  ]
 
   return (
     <div className="mx-auto w-full max-w-xl space-y-5 md:max-w-2xl md:space-y-6 lg:max-w-3xl">
@@ -110,6 +175,15 @@ export function SettingsPage() {
 
       <form onSubmit={(e) => void onSubmit(e)} className="space-y-5">
         <section className="glass-card space-y-4 p-4 sm:p-5 md:p-6">
+          <label className="block text-sm font-medium text-brand-ink dark:text-white">
+            {t.settings.displayName}
+            <input
+              value={form.name}
+              onChange={(e) => patchForm({ name: e.target.value })}
+              className="field-input"
+            />
+          </label>
+
           <h2 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
             {t.settings.weightSection}
           </h2>
@@ -117,31 +191,25 @@ export function SettingsPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block text-sm font-medium text-brand-ink dark:text-white">
               {t.settings.currentWeight}
-              <input
-                type="number"
+              <NumberField
                 min={20}
                 max={300}
                 step={0.1}
+                decimals={1}
                 value={form.currentWeightKg}
-                onChange={(e) => {
-                  setForm({ ...form, currentWeightKg: Number(e.target.value) || 0 })
-                  setSaved(false)
-                }}
+                onValueChange={(currentWeightKg) => patchForm({ currentWeightKg })}
                 className="field-input"
               />
             </label>
             <label className="block text-sm font-medium text-brand-ink dark:text-white">
               {t.settings.goalWeight}
-              <input
-                type="number"
+              <NumberField
                 min={20}
                 max={300}
                 step={0.1}
+                decimals={1}
                 value={form.goalWeightKg}
-                onChange={(e) => {
-                  setForm({ ...form, goalWeightKg: Number(e.target.value) || 0 })
-                  setSaved(false)
-                }}
+                onValueChange={(goalWeightKg) => patchForm({ goalWeightKg })}
                 className="field-input"
               />
             </label>
@@ -150,100 +218,104 @@ export function SettingsPage() {
 
         <section className="glass-card space-y-4 p-4 sm:p-5 md:p-6">
           <h2 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
-            {t.settings.visionSection}
+            {t.settings.profileSection}
           </h2>
-          <label className="block text-sm font-medium text-brand-ink dark:text-white">
-            {t.scan.modelLabel}
-            <select
-              value={form.visionModel}
-              onChange={(e) => {
-                setForm({ ...form, visionModel: e.target.value })
-                setSaved(false)
-              }}
-              className="field-input"
-            >
-              <option value="">{t.scan.modelDefault}</option>
-              <option value="gpt-5.6">gpt-5.6</option>
-              <option value="gpt-4o">gpt-4o</option>
-              <option value="gpt-4.1">gpt-4.1</option>
-            </select>
-          </label>
+          <p className="text-xs text-brand-muted dark:text-white/50">{t.settings.profileHint}</p>
+
           <div>
-            <p className="mb-2 text-sm font-medium text-brand-ink dark:text-white">{t.scan.twoPass}</p>
+            <p className="mb-2 text-sm font-medium text-brand-ink dark:text-white">{t.settings.sex}</p>
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setForm({ ...form, visionTwoPass: true })
-                  setSaved(false)
-                }}
-                className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-                  form.visionTwoPass
-                    ? 'bg-brand-green text-white'
-                    : 'bg-black/5 text-brand-ink dark:bg-white/10 dark:text-white'
-                }`}
-              >
-                {t.scan.twoPassOn}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setForm({ ...form, visionTwoPass: false })
-                  setSaved(false)
-                }}
-                className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-                  !form.visionTwoPass
-                    ? 'bg-brand-green text-white'
-                    : 'bg-black/5 text-brand-ink dark:bg-white/10 dark:text-white'
-                }`}
-              >
-                {t.scan.twoPassOff}
-              </button>
+              {sexOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => patchForm({ sex: opt.value })}
+                  className={`rounded-xl px-3 py-2 text-sm font-semibold ${
+                    form.sex === opt.value
+                      ? 'bg-brand-green text-white'
+                      : 'bg-black/5 text-brand-ink dark:bg-white/10 dark:text-white'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-sm font-medium text-brand-ink dark:text-white">
+              {t.settings.height}
+              <NumberField
+                min={120}
+                max={230}
+                decimals={0}
+                value={form.heightCm}
+                onValueChange={(heightCm) => patchForm({ heightCm })}
+                className="field-input"
+              />
+            </label>
+            <label className="block text-sm font-medium text-brand-ink dark:text-white">
+              {t.settings.age}
+              <NumberField
+                min={14}
+                max={90}
+                decimals={0}
+                value={form.age}
+                onValueChange={(age) => patchForm({ age })}
+                className="field-input"
+              />
+            </label>
+          </div>
+
           <label className="block text-sm font-medium text-brand-ink dark:text-white">
-            {t.scan.detailLabel}
+            {t.settings.activity}
             <select
-              value={form.visionDetail}
-              onChange={(e) => {
-                setForm({ ...form, visionDetail: e.target.value as VisionDetail })
-                setSaved(false)
-              }}
+              value={form.activityLevel}
+              onChange={(e) => patchForm({ activityLevel: e.target.value as ActivityLevel })}
               className="field-input"
             >
-              <option value="low">{t.scan.detailLow}</option>
-              <option value="high">{t.scan.detailHigh}</option>
-              <option value="original">{t.scan.detailOriginal}</option>
-              <option value="auto">auto</option>
+              {activityOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </label>
         </section>
 
         <section className="glass-card space-y-5 p-4 sm:p-5 md:p-6">
-          <label className="block text-sm font-medium text-brand-ink dark:text-white">
-            {t.settings.displayName}
-            <input
-              value={form.name}
-              onChange={(e) => {
-                setForm({ ...form, name: e.target.value })
-                setSaved(false)
-              }}
-              className="field-input"
-            />
-          </label>
+          <div>
+            <h2 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
+              {t.settings.nutritionGoals}
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-brand-muted dark:text-white/50">
+              {t.settings.goalsHint}
+            </p>
+          </div>
 
-          <h2 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
-            {t.settings.nutritionGoals}
-          </h2>
+          <div className="rounded-2xl bg-brand/5 p-4 dark:bg-white/5">
+            <p className="text-xs leading-relaxed text-brand-ink/80 dark:text-white/70">{summary}</p>
+            <button
+              type="button"
+              onClick={applyRecommend}
+              className="btn-primary mt-3 w-full sm:w-auto"
+            >
+              {t.settings.recommendGoals}
+            </button>
+            {recommendedJustNow && (
+              <p className="mt-2 text-sm font-medium text-brand-green">{t.settings.recommendApplied}</p>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
             {goalFields.map(([key, label]) => (
               <label key={key} className="block text-sm font-medium text-brand-ink dark:text-white">
                 {label}
-                <input
-                  type="number"
+                <NumberField
                   min={0}
+                  decimals={0}
                   value={form.goals[key]}
-                  onChange={(e) => setGoal(key, Number(e.target.value) || 0)}
+                  onValueChange={(v) => setGoal(key, v)}
                   className="field-input"
                 />
               </label>

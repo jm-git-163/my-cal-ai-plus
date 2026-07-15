@@ -162,13 +162,15 @@ export function AppLayout() {
       </main>
 
       {/* Mobile tab bar with center shutter FAB */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.05] bg-white/92 backdrop-blur-2xl dark:border-white/[0.08] dark:bg-[#07090c]/94 md:hidden">
-        <div className="relative mx-auto grid max-w-lg grid-cols-5 items-end px-1 pb-1 pt-1 safe-bottom">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-brand-ink/10 bg-[#EEF3F0] shadow-[0_-10px_32px_rgba(18,21,28,0.12)] dark:border-white/15 dark:bg-[#10161c] dark:shadow-[0_-10px_32px_rgba(0,0,0,0.45)] md:hidden">
+        <div className="relative mx-auto grid max-w-lg grid-cols-5 items-end px-1 pb-1 pt-1.5 safe-bottom">
           <NavLink
             to="/"
             end
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 py-2 text-[10px] font-semibold ${isActive ? 'text-brand-green' : 'text-brand-muted'}`
+              `flex flex-col items-center gap-0.5 py-2 text-[10px] font-bold ${
+                isActive ? 'text-brand-green' : 'text-brand-ink/75 dark:text-white/70'
+              }`
             }
           >
             {({ isActive }) => (
@@ -181,7 +183,9 @@ export function AppLayout() {
           <NavLink
             to="/history"
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 py-2 text-[10px] font-semibold ${isActive ? 'text-brand-green' : 'text-brand-muted'}`
+              `flex flex-col items-center gap-0.5 py-2 text-[10px] font-bold ${
+                isActive ? 'text-brand-green' : 'text-brand-ink/75 dark:text-white/70'
+              }`
             }
           >
             {({ isActive }) => (
@@ -201,7 +205,9 @@ export function AppLayout() {
           <NavLink
             to="/coach"
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 py-2 text-[10px] font-semibold ${isActive ? 'text-brand-green' : 'text-brand-muted'}`
+              `flex flex-col items-center gap-0.5 py-2 text-[10px] font-bold ${
+                isActive ? 'text-brand-green' : 'text-brand-ink/75 dark:text-white/70'
+              }`
             }
           >
             {({ isActive }) => (
@@ -214,7 +220,9 @@ export function AppLayout() {
           <NavLink
             to="/settings"
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 py-2 text-[10px] font-semibold ${isActive ? 'text-brand-green' : 'text-brand-muted'}`
+              `flex flex-col items-center gap-0.5 py-2 text-[10px] font-bold ${
+                isActive ? 'text-brand-green' : 'text-brand-ink/75 dark:text-white/70'
+              }`
             }
           >
             {({ isActive }) => (

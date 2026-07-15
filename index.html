@@ -15,6 +15,39 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Leave KakaoTalk / in-app WebViews for Chrome before React boots (IndexedDB isolation). -->
+    <script>
+      (function () {
+        try {
+          var ua = navigator.userAgent || ''
+          var inApp = /KAKAOTALK|FB_IAB|FBAN|FBAV|Instagram|Line\/|NAVER\(|NaverApp|DaumApps|EverytimeApp|Band\//i.test(
+            ua,
+          )
+          if (!inApp) return
+          var android = /Android/i.test(ua)
+          if (!android) return
+          var key = 'calai_chrome_redirect_ts'
+          var last = Number(sessionStorage.getItem(key) || 0)
+          if (Date.now() - last < 8000) return
+          sessionStorage.setItem(key, String(Date.now()))
+          var url = location.href
+          var withoutScheme = url.replace(/^https?:\/\//i, '')
+          var scheme = url.indexOf('https') === 0 ? 'https' : 'http'
+          location.replace(
+            'intent://' +
+              withoutScheme +
+              '#Intent;scheme=' +
+              scheme +
+              ';package=com.android.chrome;S.browser_fallback_url=' +
+              encodeURIComponent(url) +
+              ';end',
+          )
+        } catch (e) {
+          /* keep loading app */
+        }
+      })()
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+
