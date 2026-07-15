@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getModel, getOpenAI } from '../lib/openai'
+import { getModel, getOpenAI } from '../lib/openai.js'
 
 const foodSchema = {
   type: 'object',

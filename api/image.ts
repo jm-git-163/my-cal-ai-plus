@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getImageModel, getOpenAI } from '../lib/openai'
+import { getImageModel, getOpenAI } from '../lib/openai.js'
 
 /**
  * Healthy share card via Images API (OpenAI docs Image generation).
