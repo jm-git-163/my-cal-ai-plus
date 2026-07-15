@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
-import type { CoachResult } from '@/types'
+import { useEffect, useMemo, useState } from 'react'
+import type { CoachResult, MealRecommendResult } from '@/types'
 import { tReplace } from '@/i18n/translations'
 import { useI18n } from '@/hooks/useI18n'
 import { fetchCoachAdvice, generateShareCard } from '@/services/coach'
+import { fetchMealRecommendations } from '@/services/recommend'
 import { useAppStore } from '@/store/useAppStore'
+import { sumNutrition, todayMeals } from '@/utils/nutrition'
 
 function directionLabel(
   t: ReturnType<typeof useI18n>['t'],
@@ -41,12 +43,23 @@ export function CoachPage() {
   const settings = useAppStore((s) => s.settings)
 
   const [loading, setLoading] = useState(false)
+  const [recommendLoading, setRecommendLoading] = useState(false)
   const [cardLoading, setCardLoading] = useState(false)
   const [coach, setCoach] = useState<CoachResult | null>(null)
+  const [recommend, setRecommend] = useState<MealRecommendResult | null>(null)
   const [cardUrl, setCardUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [staleLocale, setStaleLocale] = useState(false)
   const [resultLocale, setResultLocale] = useState<typeof locale | null>(null)
+
+  const todayTotals = useMemo(() => sumNutrition(todayMeals(meals)), [meals])
+  const remaining = useMemo(
+    () => ({
+      calories: Math.round(settings.goals.calories - todayTotals.calories),
+      protein: Math.round(settings.goals.protein - todayTotals.protein),
+    }),
+    [settings.goals, todayTotals],
+  )
 
   useEffect(() => {
     if (resultLocale && resultLocale !== locale) {
@@ -74,6 +87,26 @@ export function CoachPage() {
       setError(err instanceof Error ? err.message : t.coach.error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function runRecommend() {
+    setRecommendLoading(true)
+    setError(null)
+    try {
+      const result = await fetchMealRecommendations({
+        meals,
+        goals: settings.goals,
+        locale,
+        name: settings.name,
+        currentWeightKg: settings.currentWeightKg,
+        goalWeightKg: settings.goalWeightKg,
+      })
+      setRecommend(result)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.coach.whatToEatError)
+    } finally {
+      setRecommendLoading(false)
     }
   }
 
@@ -106,11 +139,22 @@ export function CoachPage() {
       </div>
 
       {meals.length === 0 && (
-        <div className="glass-card p-5 text-sm text-brand-muted dark:text-white/55">{t.coach.empty}</div>
+        <div className="glass-card space-y-1 p-5 text-sm text-brand-muted dark:text-white/55">
+          <p>{t.coach.empty}</p>
+          <p>{t.coach.whatToEatEmptyOk}</p>
+        </div>
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" className="btn-primary" disabled={loading} onClick={() => void runCoach()}>
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={recommendLoading}
+          onClick={() => void runRecommend()}
+        >
+          {recommendLoading ? t.coach.whatToEatLoading : t.coach.whatToEat}
+        </button>
+        <button type="button" className="btn-secondary" disabled={loading} onClick={() => void runCoach()}>
           {loading ? t.coach.loading : t.coach.refresh}
         </button>
         {coach && (
@@ -125,6 +169,12 @@ export function CoachPage() {
         )}
       </div>
 
+      <div className="rounded-2xl bg-brand-green-soft/70 px-4 py-3 text-sm text-brand-ink dark:bg-brand-green/15 dark:text-white/80">
+        {tReplace(t.dashboard.remaining, { n: String(Math.max(0, remaining.calories)) })}
+        {' · '}
+        P {Math.max(0, remaining.protein)}g
+      </div>
+
       {staleLocale && (
         <div className="rounded-2xl border border-brand-orange/30 bg-brand-orange-soft/60 px-4 py-3 text-sm text-brand-orange dark:bg-brand-orange/15">
           {t.coach.reanalyzeHint}
@@ -135,6 +185,49 @@ export function CoachPage() {
         <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
           {error}
         </div>
+      )}
+
+      {recommend && (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h2 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
+                {t.coach.whatToEatTitle}
+              </h2>
+              <p className="mt-0.5 text-sm text-brand-muted dark:text-white/55">
+                {recommend.meal_slot} · {recommend.remaining_note}
+              </p>
+            </div>
+          </div>
+          <div className="space-y-2.5">
+            {recommend.options.map((opt, i) => (
+              <article key={`${opt.title}-${i}`} className="glass-card space-y-2 p-4 sm:p-5">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <h3 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
+                    {opt.title}
+                  </h3>
+                  <p className="tabular font-display text-xl font-bold text-brand-green">
+                    {opt.calories}
+                    <span className="ml-1 text-sm font-semibold text-brand-muted">kcal</span>
+                  </p>
+                </div>
+                <p className="text-sm font-medium text-brand-muted dark:text-white/60">
+                  {tReplace(t.coach.macrosShort, {
+                    p: String(opt.protein),
+                    c: String(opt.carbs),
+                    f: String(opt.fat),
+                  })}
+                </p>
+                <p className="text-sm leading-relaxed text-brand-ink/90 dark:text-white/75">{opt.reason}</p>
+              </article>
+            ))}
+          </div>
+          {recommend.tip && (
+            <p className="rounded-2xl bg-black/[0.03] px-4 py-3 text-sm text-brand-ink dark:bg-white/5 dark:text-white/75">
+              <span className="font-semibold text-brand-green">{t.coach.tipLabel}</span> {recommend.tip}
+            </p>
+          )}
+        </section>
       )}
 
       {coach && (

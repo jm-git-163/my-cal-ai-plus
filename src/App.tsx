@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from '@/components/AppLayout'
 import { OpenInChromeGate } from '@/components/OpenInChromeGate'
+import { ProfileSetupGate } from '@/components/ProfileSetupGate'
 import { useI18n } from '@/hooks/useI18n'
 import { CoachPage } from '@/pages/CoachPage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -31,18 +32,20 @@ export default function App() {
 
   return (
     <OpenInChromeGate>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="scan" element={<ScanPage />} />
-            <Route path="history" element={<HistoryPage />} />
-            <Route path="coach" element={<CoachPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <ProfileSetupGate>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route index element={<DashboardPage />} />
+              <Route path="scan" element={<ScanPage />} />
+              <Route path="history" element={<HistoryPage />} />
+              <Route path="coach" element={<CoachPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </ProfileSetupGate>
     </OpenInChromeGate>
   )
 }

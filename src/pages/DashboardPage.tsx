@@ -19,7 +19,6 @@ export function DashboardPage() {
   const { goals } = settings
   const remaining = goals.calories - totals.calories
   const calPct = goals.calories > 0 ? Math.min(100, (totals.calories / goals.calories) * 100) : 0
-  const delta = Math.abs(settings.currentWeightKg - settings.goalWeightKg)
 
   const fatSoft = theme === 'dark' ? '#2A3140' : '#EEF0F4'
   const fatAccent = theme === 'dark' ? '#E8ECF2' : '#1A1F2C'
@@ -30,8 +29,9 @@ export function DashboardPage() {
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-green">{t.dashboard.today}</p>
           <h1 className="mt-1 font-display text-[1.75rem] font-bold leading-tight tracking-tight text-brand-ink dark:text-white sm:text-4xl">
-            {tReplace(t.dashboard.hello, { name: settings.name })}
+            {t.dashboard.title}
           </h1>
+          <p className="mt-1 text-sm text-brand-muted dark:text-white/55">{t.dashboard.subtitle}</p>
         </div>
         <div className="hidden gap-2 sm:flex">
           <Link to="/coach" className="btn-secondary">
@@ -43,7 +43,7 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+      <section>
         <div className="glass-card relative overflow-hidden p-5 sm:p-7">
           <div className="pointer-events-none absolute -right-10 -top-12 h-44 w-44 rounded-full bg-brand-green/20 blur-3xl" />
           <p className="text-sm font-medium text-brand-muted dark:text-white/50">{t.dashboard.calories}</p>
@@ -70,34 +70,6 @@ export function DashboardPage() {
             </Link>
             <Link to="/coach" className="btn-secondary text-center">
               {t.dashboard.askCoach}
-            </Link>
-          </div>
-        </div>
-
-        <div className="glass-card flex flex-col justify-between p-5 sm:p-6">
-          <div>
-            <p className="text-sm font-medium text-brand-muted dark:text-white/50">{t.dashboard.weightProgress}</p>
-            <p className="mt-3 tabular font-display text-3xl font-bold tracking-tight text-brand-ink dark:text-white sm:text-4xl">
-              {settings.currentWeightKg}
-              <span className="mx-2 text-lg font-semibold text-brand-muted">→</span>
-              {settings.goalWeightKg}
-              <span className="ml-1 text-sm font-semibold text-brand-muted">kg</span>
-            </p>
-            <p className="mt-2 text-xs text-brand-muted dark:text-white/45">
-              {tReplace(t.dashboard.toGo, { n: delta.toFixed(1) })}
-            </p>
-          </div>
-          <div className="mt-6">
-            <div className="h-2 overflow-hidden rounded-full bg-black/[0.05] dark:bg-white/10">
-              <div
-                className="h-full rounded-full bg-brand-ink transition-all dark:bg-white"
-                style={{
-                  width: `${Math.min(100, Math.max(10, 100 - (delta / Math.max(settings.currentWeightKg, 1)) * 100))}%`,
-                }}
-              />
-            </div>
-            <Link to="/settings" className="mt-3 inline-block text-sm font-semibold text-brand-green">
-              {t.nav.settings} →
             </Link>
           </div>
         </div>

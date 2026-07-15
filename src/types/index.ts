@@ -79,6 +79,28 @@ export interface CoachResult {
   }
 }
 
+export interface MealRecommendOption {
+  title: string
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  reason: string
+}
+
+export interface MealRecommendResult {
+  meal_slot: string
+  remaining_note: string
+  options: MealRecommendOption[]
+  tip: string
+  remaining?: {
+    calories: number
+    protein: number
+    carbs: number
+    fat: number
+  }
+}
+
 export interface MealEntry extends NutritionResult {
   id: string
   mealType: MealType
@@ -100,6 +122,8 @@ export interface UserSettings {
   goals: DailyGoals
   currentWeightKg: number
   goalWeightKg: number
+  /** True after the first-launch name/weight setup. */
+  profileSetupDone: boolean
   /** Used for calorie recommendation (Mifflin–St Jeor). */
   sex: BiologicalSex
   heightCm: number
@@ -124,10 +148,11 @@ export const DEFAULT_GOALS: DailyGoals = {
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
-  name: 'User',
+  name: '',
   goals: DEFAULT_GOALS,
-  currentWeightKg: 70,
-  goalWeightKg: 65,
+  currentWeightKg: 0,
+  goalWeightKg: 0,
+  profileSetupDone: false,
   sex: 'unspecified',
   heightCm: 165,
   age: 35,
@@ -156,10 +181,11 @@ export function normalizeSettings(raw: Partial<UserSettings> | undefined): UserS
     ? (raw!.activityLevel as ActivityLevel)
     : DEFAULT_SETTINGS.activityLevel
   return {
-    name: raw?.name || DEFAULT_SETTINGS.name,
+    name: typeof raw?.name === 'string' ? raw.name.trim() : DEFAULT_SETTINGS.name,
     goals: { ...DEFAULT_GOALS, ...raw?.goals },
-    currentWeightKg: Number(raw?.currentWeightKg) > 0 ? Number(raw?.currentWeightKg) : DEFAULT_SETTINGS.currentWeightKg,
-    goalWeightKg: Number(raw?.goalWeightKg) > 0 ? Number(raw?.goalWeightKg) : DEFAULT_SETTINGS.goalWeightKg,
+    currentWeightKg: Number(raw?.currentWeightKg) > 0 ? Number(raw?.currentWeightKg) : 0,
+    goalWeightKg: Number(raw?.goalWeightKg) > 0 ? Number(raw?.goalWeightKg) : 0,
+    profileSetupDone: Boolean(raw?.profileSetupDone),
     sex,
     heightCm: Number(raw?.heightCm) > 0 ? Number(raw?.heightCm) : DEFAULT_SETTINGS.heightCm,
     age: Number(raw?.age) > 0 ? Number(raw?.age) : DEFAULT_SETTINGS.age,

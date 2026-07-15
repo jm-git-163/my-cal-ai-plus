@@ -51,7 +51,7 @@ export function SettingsPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    await updateSettings(form)
+    await updateSettings({ ...form, profileSetupDone: true })
     setSaved(true)
     setRecommendedJustNow(false)
   }
@@ -175,6 +175,10 @@ export function SettingsPage() {
 
       <form onSubmit={(e) => void onSubmit(e)} className="space-y-5">
         <section className="glass-card space-y-4 p-4 sm:p-5 md:p-6">
+          <h2 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
+            {t.settings.profileBasics}
+          </h2>
+          <p className="text-xs text-brand-muted dark:text-white/50">{t.settings.profileBasicsHint}</p>
           <label className="block text-sm font-medium text-brand-ink dark:text-white">
             {t.settings.displayName}
             <input
@@ -183,11 +187,6 @@ export function SettingsPage() {
               className="field-input"
             />
           </label>
-
-          <h2 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
-            {t.settings.weightSection}
-          </h2>
-          <p className="text-xs text-brand-muted dark:text-white/50">{t.settings.weightHint}</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block text-sm font-medium text-brand-ink dark:text-white">
               {t.settings.currentWeight}
@@ -196,7 +195,7 @@ export function SettingsPage() {
                 max={300}
                 step={0.1}
                 decimals={1}
-                value={form.currentWeightKg}
+                value={form.currentWeightKg || 65}
                 onValueChange={(currentWeightKg) => patchForm({ currentWeightKg })}
                 className="field-input"
               />
@@ -208,7 +207,7 @@ export function SettingsPage() {
                 max={300}
                 step={0.1}
                 decimals={1}
-                value={form.goalWeightKg}
+                value={form.goalWeightKg || 60}
                 onValueChange={(goalWeightKg) => patchForm({ goalWeightKg })}
                 className="field-input"
               />
