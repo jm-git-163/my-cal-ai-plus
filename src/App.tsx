@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from '@/components/AppLayout'
 import { useI18n } from '@/hooks/useI18n'
+import { CoachPage } from '@/pages/CoachPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { HistoryPage } from '@/pages/HistoryPage'
 import { ScanPage } from '@/pages/ScanPage'
@@ -32,6 +33,7 @@ export default function App() {
           <Route index element={<DashboardPage />} />
           <Route path="scan" element={<ScanPage />} />
           <Route path="history" element={<HistoryPage />} />
+          <Route path="coach" element={<CoachPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

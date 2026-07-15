@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import OpenAI from 'openai'
+import { getModel, getOpenAI } from '../lib/openai'
 
 const foodSchema = {
   type: 'object',
@@ -11,74 +11,99 @@ const foodSchema = {
     fat: { type: 'number' },
     carbs: { type: 'number' },
     confidence: { type: 'number' },
+    ingredients: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+    tip: { type: 'string' },
+    is_unclear: { type: 'boolean' },
   },
-  required: ['food', 'grams', 'calories', 'protein', 'fat', 'carbs', 'confidence'],
+  required: [
+    'food',
+    'grams',
+    'calories',
+    'protein',
+    'fat',
+    'carbs',
+    'confidence',
+    'ingredients',
+    'tip',
+    'is_unclear',
+  ],
   additionalProperties: false,
 } as const
 
+/**
+ * Food vision via Responses API + Structured Outputs.
+ * @see https://developers.openai.com/api/docs/guides/images-vision
+ * @see https://developers.openai.com/api/docs/guides/structured-outputs
+ */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    return res.status(500).json({ error: 'OPENAI_API_KEY is not configured' })
-  }
-
-  const { image } = req.body as { image?: string }
-  if (!image || typeof image !== 'string') {
-    return res.status(400).json({ error: 'Missing image (base64 data URL)' })
-  }
-
-  if (!image.startsWith('data:image/')) {
-    return res.status(400).json({ error: 'image must be a data URL' })
-  }
-
-  // Cap ~4MB base64 payload
-  if (image.length > 5_500_000) {
-    return res.status(413).json({ error: 'Image too large. Please use a smaller photo.' })
-  }
-
-  const model = process.env.OPENAI_MODEL || 'gpt-4o'
-  const client = new OpenAI({ apiKey })
-
   try {
-    const completion = await client.chat.completions.create({
+    const { image, locale } = req.body as { image?: string; locale?: string }
+    if (!image || typeof image !== 'string') {
+      return res.status(400).json({ error: 'Missing image (base64 data URL)' })
+    }
+    if (!image.startsWith('data:image/')) {
+      return res.status(400).json({ error: 'image must be a data URL' })
+    }
+    if (image.length > 5_500_000) {
+      return res.status(413).json({ error: 'Image too large. Please use a smaller photo.' })
+    }
+
+    const lang = locale === 'en' ? 'English' : 'Korean'
+    const client = getOpenAI()
+    const model = getModel()
+
+    const response = await client.responses.create({
       model,
-      temperature: 0.2,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
+      instructions: `You are a nutrition vision expert for My Cal AI Plus.
+Analyze the food photo and estimate dish name, portion grams, calories, and macros (protein/fat/carbs in grams).
+confidence is 0–1. If the image is not food or is too unclear, set is_unclear=true, lower confidence, and still return best-effort conservative estimates.
+ingredients: short list of visible/main ingredients.
+tip: one practical nutrition tip for this meal (max ~80 chars) in ${lang}.
+food and tip language: ${lang}.`,
+      text: {
+        format: {
+          type: 'json_schema',
           name: 'food_nutrition',
           strict: true,
           schema: foodSchema,
         },
       },
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are a nutrition vision expert for My Cal AI Plus. Analyze the food photo and estimate dish name, portion weight in grams, calories, and macros (protein/fat/carbs in grams). confidence is 0–1. Be realistic; if unclear, lower confidence and make conservative estimates.',
-        },
+      input: [
         {
           role: 'user',
           content: [
             {
-              type: 'text',
+              type: 'input_text',
               text: 'Analyze this meal photo and return structured nutrition estimates.',
             },
             {
-              type: 'image_url',
-              image_url: { url: image, detail: 'high' },
+              type: 'input_image',
+              image_url: image,
+              detail: 'high',
             },
           ],
         },
       ],
     })
 
-    const raw = completion.choices[0]?.message?.content
+    for (const item of response.output) {
+      if (item.type !== 'message') continue
+      for (const part of item.content) {
+        if (part.type === 'refusal') {
+          return res.status(422).json({ error: part.refusal, refused: true })
+        }
+      }
+    }
+
+    const raw = response.output_text
     if (!raw) {
       return res.status(502).json({ error: 'Empty response from OpenAI' })
     }
@@ -91,6 +116,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fat: number
       carbs: number
       confidence: number
+      ingredients: string[]
+      tip: string
+      is_unclear: boolean
     }
 
     return res.status(200).json({
@@ -101,6 +129,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fat: Math.round(parsed.fat * 10) / 10,
       carbs: Math.round(parsed.carbs * 10) / 10,
       confidence: Math.min(1, Math.max(0, parsed.confidence)),
+      ingredients: parsed.ingredients?.slice(0, 8) ?? [],
+      tip: parsed.tip || '',
+      is_unclear: Boolean(parsed.is_unclear),
+      model,
+      usage: response.usage ?? null,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Vision analysis failed'

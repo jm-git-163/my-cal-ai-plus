@@ -10,7 +10,7 @@ import { guessMealType, preprocessImage } from '@/utils/preprocess'
 type Stage = 'idle' | 'preprocessing' | 'analyzing' | 'result' | 'error'
 
 export function ScanPage() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
   const addMeal = useAppStore((s) => s.addMeal)
@@ -41,7 +41,7 @@ export function ScanPage() {
       setProcessed(enhanced)
 
       setStage('analyzing')
-      const nutrition = await analyzeFoodImage(enhanced)
+      const nutrition = await analyzeFoodImage(enhanced, locale)
       setResult(nutrition)
       setMealType(guessMealType())
       setStage('result')
@@ -162,6 +162,36 @@ export function ScanPage() {
               </div>
               <p className="font-display text-2xl font-bold text-brand-green">{result.calories} kcal</p>
             </div>
+            {result.is_unclear && (
+              <p className="rounded-xl bg-brand-orange-soft/80 px-3 py-2 text-xs font-medium text-brand-orange dark:bg-brand-orange/20">
+                {t.scan.unclear}
+              </p>
+            )}
+            {result.tip && (
+              <div className="rounded-xl bg-white/70 px-3 py-2 text-sm dark:bg-white/10">
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand-muted dark:text-white/50">
+                  {t.scan.aiTip}
+                </p>
+                <p className="mt-1 text-brand-ink dark:text-white/85">{result.tip}</p>
+              </div>
+            )}
+            {result.ingredients && result.ingredients.length > 0 && (
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-muted dark:text-white/50">
+                  {t.scan.ingredients}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {result.ingredients.map((ing) => (
+                    <span
+                      key={ing}
+                      className="rounded-lg bg-white/80 px-2 py-1 text-xs font-medium text-brand-ink dark:bg-white/10 dark:text-white/80"
+                    >
+                      {ing}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-3 gap-2 text-center text-sm">
               <div className="rounded-xl bg-white/80 px-2 py-3 dark:bg-white/10">
                 <p className="text-brand-muted dark:text-white/50">{t.dashboard.protein}</p>

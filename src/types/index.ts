@@ -10,6 +10,17 @@ export interface NutritionResult {
   fat: number
   carbs: number
   confidence: number
+  ingredients?: string[]
+  tip?: string
+  is_unclear?: boolean
+}
+
+export interface CoachResult {
+  summary: string
+  advice: string
+  focus: string[]
+  score: number
+  predicted_goal_note: string
 }
 
 export interface MealEntry extends NutritionResult {

@@ -60,10 +60,12 @@ Set environment variables in the Vercel project dashboard (or CLI):
 | `/history` | Meal history (IndexedDB) |
 | `/settings` | Name, goals, language (KO/EN), light/dark theme |
 
-## i18n & theme
+## OpenAI features (per [platform docs](https://developers.openai.com/api/docs))
 
-- Languages: Korean / English (header + Settings)
-- Theme: Light / Dark (`class` strategy, persisted in IndexedDB)
+- Responses API + Vision + Structured Outputs (`/api/vision`)
+- AI Coach with Structured Outputs (`/api/coach`)
+- Share card Image Generation (`/api/image`)
+- Default model: `gpt-5.6` (override with `OPENAI_MODEL`)
 
 ## Spec
 

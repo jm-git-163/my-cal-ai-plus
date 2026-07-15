@@ -29,9 +29,12 @@ export function DashboardPage() {
           {tReplace(t.dashboard.hello, { name: settings.name })}
         </h1>
         <p className="max-w-xl text-brand-muted dark:text-white/60">{t.dashboard.subtitle}</p>
-        <div className="pt-2">
+        <div className="flex flex-wrap gap-2 pt-2">
           <Link to="/scan" className="btn-primary">
             {t.dashboard.scanFood}
+          </Link>
+          <Link to="/coach" className="btn-secondary">
+            {t.dashboard.askCoach}
           </Link>
         </div>
       </section>

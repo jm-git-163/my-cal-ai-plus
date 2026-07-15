@@ -12,6 +12,7 @@ export function AppLayout() {
     { to: '/', label: t.nav.dashboard, end: true },
     { to: '/scan', label: t.nav.scan, end: false },
     { to: '/history', label: t.nav.history, end: false },
+    { to: '/coach', label: t.nav.coach, end: false },
     { to: '/settings', label: t.nav.settings, end: false },
   ]
 
