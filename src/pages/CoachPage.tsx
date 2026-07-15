@@ -199,28 +199,67 @@ export function CoachPage() {
               </p>
             </div>
           </div>
+
+          {recommend.situation_note && (
+            <p className="rounded-2xl border border-brand-green/20 bg-brand-green-soft/80 px-4 py-3 text-sm leading-relaxed text-brand-ink dark:border-brand-green/30 dark:bg-brand-green/15 dark:text-white/85">
+              {recommend.situation_note}
+            </p>
+          )}
+
           <div className="space-y-2.5">
-            {recommend.options.map((opt, i) => (
-              <article key={`${opt.title}-${i}`} className="glass-card space-y-2 p-4 sm:p-5">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <h3 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
-                    {opt.title}
-                  </h3>
-                  <p className="tabular font-display text-xl font-bold text-brand-green">
-                    {opt.calories}
-                    <span className="ml-1 text-sm font-semibold text-brand-muted">kcal</span>
-                  </p>
-                </div>
-                <p className="text-sm font-medium text-brand-muted dark:text-white/60">
-                  {tReplace(t.coach.macrosShort, {
-                    p: String(opt.protein),
-                    c: String(opt.carbs),
-                    f: String(opt.fat),
-                  })}
-                </p>
-                <p className="text-sm leading-relaxed text-brand-ink/90 dark:text-white/75">{opt.reason}</p>
-              </article>
-            ))}
+            {recommend.options.map((opt, i) => {
+              const kind = opt.kind || 'meal'
+              const isHydrate = kind === 'hydrate' || kind === 'rest'
+              const kindLabel =
+                kind === 'hydrate'
+                  ? t.coach.kindHydrate
+                  : kind === 'rest'
+                    ? t.coach.kindRest
+                    : kind === 'snack'
+                      ? t.coach.kindSnack
+                      : t.coach.kindMeal
+              const kindTone = isHydrate
+                ? 'bg-brand-blue-soft text-brand-blue dark:bg-brand-blue/20'
+                : kind === 'snack'
+                  ? 'bg-brand-orange-soft text-brand-orange dark:bg-brand-orange/20'
+                  : 'bg-brand-green-soft text-brand-green dark:bg-brand-green/20'
+
+              return (
+                <article
+                  key={`${opt.title}-${i}`}
+                  className={`glass-card space-y-2 p-4 sm:p-5 ${
+                    isHydrate ? 'ring-1 ring-brand-blue/20 dark:ring-brand-blue/30' : ''
+                  }`}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0 space-y-1.5">
+                      <span
+                        className={`inline-flex rounded-lg px-2 py-0.5 text-[11px] font-semibold ${kindTone}`}
+                      >
+                        {kindLabel}
+                      </span>
+                      <h3 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
+                        {opt.title}
+                      </h3>
+                    </div>
+                    <p className="tabular font-display text-xl font-bold text-brand-green">
+                      {opt.calories}
+                      <span className="ml-1 text-sm font-semibold text-brand-muted">kcal</span>
+                    </p>
+                  </div>
+                  {!isHydrate && (
+                    <p className="text-sm font-medium text-brand-muted dark:text-white/60">
+                      {tReplace(t.coach.macrosShort, {
+                        p: String(opt.protein),
+                        c: String(opt.carbs),
+                        f: String(opt.fat),
+                      })}
+                    </p>
+                  )}
+                  <p className="text-sm leading-relaxed text-brand-ink/90 dark:text-white/75">{opt.reason}</p>
+                </article>
+              )
+            })}
           </div>
           {recommend.tip && (
             <p className="rounded-2xl bg-black/[0.03] px-4 py-3 text-sm text-brand-ink dark:bg-white/5 dark:text-white/75">

@@ -80,6 +80,7 @@ export interface CoachResult {
 }
 
 export interface MealRecommendOption {
+  kind?: 'meal' | 'snack' | 'hydrate' | 'rest'
   title: string
   calories: number
   protein: number
@@ -90,6 +91,7 @@ export interface MealRecommendOption {
 
 export interface MealRecommendResult {
   meal_slot: string
+  situation_note?: string
   remaining_note: string
   options: MealRecommendOption[]
   tip: string
@@ -124,6 +126,8 @@ export interface UserSettings {
   goalWeightKg: number
   /** True after the first-launch name/weight setup. */
   profileSetupDone: boolean
+  /** True after the first-launch how-to guide was shown. */
+  guideSeen: boolean
   /** Used for calorie recommendation (Mifflin–St Jeor). */
   sex: BiologicalSex
   heightCm: number
@@ -153,6 +157,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   currentWeightKg: 0,
   goalWeightKg: 0,
   profileSetupDone: false,
+  guideSeen: false,
   sex: 'unspecified',
   heightCm: 165,
   age: 35,
@@ -186,6 +191,7 @@ export function normalizeSettings(raw: Partial<UserSettings> | undefined): UserS
     currentWeightKg: Number(raw?.currentWeightKg) > 0 ? Number(raw?.currentWeightKg) : 0,
     goalWeightKg: Number(raw?.goalWeightKg) > 0 ? Number(raw?.goalWeightKg) : 0,
     profileSetupDone: Boolean(raw?.profileSetupDone),
+    guideSeen: Boolean(raw?.guideSeen),
     sex,
     heightCm: Number(raw?.heightCm) > 0 ? Number(raw?.heightCm) : DEFAULT_SETTINGS.heightCm,
     age: Number(raw?.age) > 0 ? Number(raw?.age) : DEFAULT_SETTINGS.age,

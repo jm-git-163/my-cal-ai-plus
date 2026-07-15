@@ -28,12 +28,15 @@ export async function fetchMealRecommendations(params: {
         protein: params.goals.protein,
         carbs: params.goals.carbs,
         fat: params.goals.fat,
+        waterMl: params.goals.waterMl,
       },
       currentWeightKg: params.currentWeightKg,
       goalWeightKg: params.goalWeightKg,
       locale: params.locale,
       name: params.name,
       mealSlot: guessMealType(),
+      localHour: new Date().getHours(),
+      nowIso: new Date().toISOString(),
     }),
   })
 
