@@ -223,35 +223,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? { reasoning: { effort: getFastReasoningEffort() } }
         : {}),
       instructions: `You are My Cal AI Plus next-action coach — NOT a menu generator.
-Decide whether the user should EAT, SNACK, drink WATER, or WAIT (light fasting / skip this snack).
+Decide whether the user should EAT, SNACK, drink WATER, or do a short NON-FOOD activity to ride out hunger / keep a light fast.
 Be concise. All user-facing strings must be in ${lang}.
 
 Output fields:
 - meal_slot: localized time slot label (아침/점심/저녁/간식 or Breakfast/…)
-- situation_note: 1 honest sentence about NOW (time + remaining + whether waiting is smarter)
+- situation_note: 1 honest sentence about NOW (time + remaining + whether an activity-or-wait is smarter than eating)
 - remaining_note: short leftover kcal/protein line
 - options: 2 or 3 items with kind (meal|snack|hydrate|rest), title, macros, reason
 - tip: one gentle tip
 
 Core philosophy:
-- Good coaching often means saying “don’t eat yet” — water + wait is a valid primary recommendation.
+- Saying “don’t eat yet” is good coaching — prefer water + a short helpful activity over bare willpower.
 - Prefer skip/wait when prefer_skip_food is true, even if users asked “what to eat”.
+- kind=rest means a concrete activity (light walk, stretch, 5-min breathing/meditation, tidy desk, shower), NOT only “just endure hunger”.
 
 Decision rules (follow strictly):
 1) If prefer_skip_food OR over_calories OR just_ate_within_90min OR (late_night AND remaining calories < 450):
    - FIRST option MUST be kind=hydrate OR kind=rest.
-   - Titles like: "물 한 잔 마시고 30~60분 참기", "간식 건너뛰고 공복 유지", "Drink water and wait", "Skip this snack".
+   - Prefer actionable titles, e.g.:
+     KO: "10분 가벼운 산책", "물 마시고 5분 호흡명상", "스트레칭 후 공복 유지"
+     EN: "10-min easy walk", "Water + 5-min breathing", "Stretch, then keep fasting lightly"
+   - Pick activity by time: daytime → walk/stretch; late night / early morning → quiet breathing, light stretch, or hydrate (avoid energetic workouts at night).
    - At most ONE light snack as alternative; NO full meal as first choice.
 2) If low_remaining_calories OR near_goal_calories with weight_goal_mode=lose:
-   - Lead with hydrate/rest; optional broth/fruit only if still hungry language is needed.
+   - Lead with hydrate/rest activity; optional broth/fruit only if still-hungry language is needed.
 3) Else if it is a real meal_slot (아침/점심/저녁) AND calories remaining are ample AND not just_ate:
    - Normal meal or protein-forward snack is OK first.
-4) weight_goal_mode lose → lean toward water/wait/volume foods; gain → fuller meals when macros allow; maintain → balanced, still allow wait if just ate.
-5) Late night / early morning → hydrate/rest preferred over dinner-like meals.
+4) weight_goal_mode lose → lean toward water/activity/volume foods; gain → fuller meals when macros allow; maintain → balanced, still allow activity-wait if just ate.
+5) Late night / early morning → hydrate + calm rest activity over dinner-like meals.
 6) Korean → everyday phrasing; English → practical phrasing.
 7) hydrate/rest macros must be ≈0.
-8) Never shame. Waiting is framed as helpful, not failure.
-9) Always return 2 or 3 options; when waiting is wise, put wait/water first.`,
+8) Never shame. Framing: movement/mindfulness helps the urge pass — not failure.
+9) Always return 2 or 3 options; when waiting is wise, put water/activity first.`,
       text: {
         format: {
           type: 'json_schema',
@@ -260,7 +264,7 @@ Decision rules (follow strictly):
           schema: recommendSchema,
         },
       },
-      input: `Recommend the next action (eat OR wait/water) from this JSON:\n${JSON.stringify(payload)}`,
+      input: `Recommend the next action (eat OR water/activity to wait) from this JSON:\n${JSON.stringify(payload)}`,
     })
 
     for (const item of response.output) {
@@ -311,24 +315,35 @@ Decision rules (follow strictly):
         }
       })
 
-    // Hard guarantee: when skip is wiser, lead with water/wait even if the model forgot.
+    // Hard guarantee: when skip is wiser, lead with water/activity even if the model forgot.
     if (preferSkipFood) {
       const skipFirst = options.find((o) => o.kind === 'hydrate' || o.kind === 'rest')
       if (skipFirst) {
-        const rest = options.filter((o) => o !== skipFirst)
-        options.splice(0, options.length, skipFirst, ...rest)
+        const restOpts = options.filter((o) => o !== skipFirst)
+        options.splice(0, options.length, skipFirst, ...restOpts)
       } else {
         const ko = lang === 'Korean'
+        const calmHours = lateNight || tod === 'early_morning'
         options.unshift({
           kind: 'rest',
-          title: ko ? '물 한 잔 마시고 잠시 공복 유지' : 'Drink water and wait a bit',
+          title: calmHours
+            ? ko
+              ? '물 한 잔 + 5분 호흡명상'
+              : 'Water + 5-min breathing'
+            : ko
+              ? '물 한 잔 마시고 10분 가벼운 산책'
+              : 'Drink water, then a 10-min easy walk',
           calories: 0,
           protein: 0,
           carbs: 0,
           fat: 0,
           reason: ko
-            ? '지금은 식사·간식보다 잠깐 참는 편이 목표에 맞아요.'
-            : 'Waiting with water fits your goal better than another snack right now.',
+            ? calmHours
+              ? '야식 욕구는 조용한 호흡으로 지나가게 두는 편이 목표에 맞아요.'
+              : '가벼운 움직임이 허기를 달래 주고, 지금은 간식보다 공복 유지가 맞아요.'
+            : calmHours
+              ? 'Quiet breathing helps evening hunger pass without another snack.'
+              : 'A short walk eases the urge — skipping food fits your goal better now.',
         })
         while (options.length > 3) options.pop()
       }

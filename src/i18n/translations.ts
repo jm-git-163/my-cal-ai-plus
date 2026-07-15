@@ -182,13 +182,14 @@ export const translations = {
       whatToEatLoading: 'Finding ideas…',
       whatToEatError: 'Could not load ideas.',
       whatToEatTitle: 'What to do next',
-      whatToEatEmptyOk: 'May suggest a meal — or water and waiting, depending on your goal and timing.',
+      whatToEatEmptyOk:
+        'May suggest a meal — or water, a short walk, or calm breathing when waiting is smarter.',
       macrosShort: 'P {p} · C {c} · F {f}',
       tipLabel: 'Tip',
       kindMeal: 'Meal',
       kindSnack: 'Snack',
       kindHydrate: 'Water',
-      kindRest: 'Wait / skip',
+      kindRest: 'Activity',
     },
     history: {
       title: 'Meal History',
@@ -428,13 +429,14 @@ export const translations = {
       whatToEatLoading: '상황 보는 중…',
       whatToEatError: '추천을 불러오지 못했습니다.',
       whatToEatTitle: '지금 이렇게 해 보세요',
-      whatToEatEmptyOk: '식사·간식뿐 아니라, 상황에 따라 물 마시고 잠시 참는 것도 추천해요.',
+      whatToEatEmptyOk:
+        '식사·간식뿐 아니라, 상황에 따라 물·가벼운 산책·짧은 호흡명상도 추천해요.',
       macrosShort: '단 {p} · 탄 {c} · 지 {f}',
       tipLabel: '팁',
       kindMeal: '식사',
       kindSnack: '간식',
       kindHydrate: '물',
-      kindRest: '참기 / 공복',
+      kindRest: '활동',
     },
     history: {
       title: '식사 기록',
