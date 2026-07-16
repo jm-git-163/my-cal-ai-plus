@@ -25,6 +25,7 @@ export function ScanPage() {
 
   const [stage, setStage] = useState<Stage>('idle')
   const [preview, setPreview] = useState<string | null>(null)
+  const previewBlobRef = useRef<string | null>(null)
   const [processed, setProcessed] = useState<string | null>(null)
   const [result, setResult] = useState<NutritionResult | null>(null)
   const [mealType, setMealType] = useState<MealType>(guessMealType())
@@ -43,6 +44,13 @@ export function ScanPage() {
 
   const busy = stage === 'preprocessing' || stage === 'analyzing'
 
+  function revokePreviewBlob() {
+    if (previewBlobRef.current) {
+      URL.revokeObjectURL(previewBlobRef.current)
+      previewBlobRef.current = null
+    }
+  }
+
   // Discourage accidental leave while analysis is in flight.
   useEffect(() => {
     if (!busy) return
@@ -52,6 +60,16 @@ export function ScanPage() {
     }
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [busy])
+
+  // Keep the wait overlay in view — no scrolling away mid-analysis.
+  useEffect(() => {
+    if (!busy) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
   }, [busy])
 
   async function handleFile(file: File) {
@@ -71,6 +89,11 @@ export function ScanPage() {
     setResult(null)
     setSavedId(null)
     setSaveNote(null)
+    revokePreviewBlob()
+    const instantPreview = URL.createObjectURL(file)
+    previewBlobRef.current = instantPreview
+    setPreview(instantPreview)
+    setProcessed(null)
     setStage('preprocessing')
 
     try {
@@ -80,6 +103,7 @@ export function ScanPage() {
         reader.onerror = () => reject(new Error(t.scan.readFailed))
         reader.readAsDataURL(file)
       })
+      revokePreviewBlob()
       setPreview(rawUrl)
 
       // One resized JPEG (~1024) keeps vision quality with fewer tokens / less upload.
@@ -120,6 +144,7 @@ export function ScanPage() {
         setSaving(false)
       }
     } catch (err) {
+      revokePreviewBlob()
       setStage('error')
       setError(err instanceof Error ? err.message : t.scan.analysisFailed)
     }
@@ -152,6 +177,7 @@ export function ScanPage() {
   }
 
   function reset() {
+    revokePreviewBlob()
     setStage('idle')
     setPreview(null)
     setProcessed(null)
@@ -185,9 +211,8 @@ export function ScanPage() {
       ? t.scan.saving
       : t.scan.saveQuick
 
-  const waitPanelBusy = stage === 'preprocessing' || stage === 'analyzing'
-
   return (
+    <>
     <div className="mx-auto w-full max-w-2xl space-y-4 md:max-w-3xl md:space-y-5 pb-36 md:pb-0">
       <div>
         <h1 className="font-display text-2xl font-bold tracking-tight text-brand-ink dark:text-white sm:text-3xl">
@@ -209,7 +234,7 @@ export function ScanPage() {
           }}
         />
 
-        {!preview ? (
+        {!preview && !busy ? (
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
@@ -228,7 +253,7 @@ export function ScanPage() {
               <p className="mt-1 text-sm text-brand-muted dark:text-white/55">{t.scan.uploadHint}</p>
             </div>
           </button>
-        ) : (
+        ) : preview ? (
           <div className="relative overflow-hidden rounded-[22px]">
             <img
               src={processed ?? preview}
@@ -245,20 +270,7 @@ export function ScanPage() {
               </>
             )}
           </div>
-        )}
-
-        {busy && (
-          <CoachWaitPanel
-            mode="scan"
-            title={t.scan.waitTitle}
-            stages={t.scan.waitStages}
-            tips={t.scan.waitTips}
-            almost={t.scan.waitAlmost}
-            hint={t.scan.waitHint}
-            tipLabel={t.scan.aiTip || t.coach.tipLabel}
-            almostAfterSec={10}
-          />
-        )}
+        ) : null}
 
         {error && (
           <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
@@ -428,7 +440,7 @@ export function ScanPage() {
           </div>
         )}
 
-        {preview && !waitPanelBusy && stage !== 'result' && (
+        {preview && !busy && stage !== 'result' && (
           <button type="button" className="btn-secondary w-full" onClick={reset}>
             {t.scan.chooseOther}
           </button>
@@ -453,5 +465,38 @@ export function ScanPage() {
         </div>
       )}
     </div>
+
+    {busy && (
+      <div
+        className="scan-wait-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-busy="true"
+        aria-labelledby="scan-wait-heading"
+      >
+        <div className="scan-wait-overlay__inner">
+          {preview && (
+            <div className="scan-wait-overlay__thumb">
+              <img src={processed ?? preview} alt="" className="h-full w-full object-cover" />
+              <div className="scan-wait-beam" aria-hidden />
+            </div>
+          )}
+          <CoachWaitPanel
+            mode="scan"
+            title={t.scan.waitTitle}
+            stages={t.scan.waitStages}
+            tips={t.scan.waitTips}
+            almost={t.scan.waitAlmost}
+            hint={t.scan.waitHint}
+            tipLabel={t.scan.aiTip || t.coach.tipLabel}
+            almostAfterSec={10}
+          />
+          <p id="scan-wait-heading" className="sr-only">
+            {stage === 'preprocessing' ? t.scan.preprocessing : t.scan.analyzing}
+          </p>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

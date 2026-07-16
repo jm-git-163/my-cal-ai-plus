@@ -347,6 +347,42 @@ html.dark .coach-wait__bar {
   }
 }
 
+.scan-wait-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5.5rem 1rem 6.5rem;
+  background: rgba(238, 243, 240, 0.94);
+  backdrop-filter: blur(10px);
+}
+
+html.dark .scan-wait-overlay {
+  background: rgba(7, 9, 12, 0.94);
+}
+
+.scan-wait-overlay__inner {
+  display: flex;
+  width: 100%;
+  max-width: 28rem;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.scan-wait-overlay__thumb {
+  position: relative;
+  overflow: hidden;
+  height: 9rem;
+  border-radius: 1.25rem;
+  box-shadow: 0 12px 32px rgba(18, 21, 28, 0.12);
+}
+
+html.dark .scan-wait-overlay__thumb {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-enter,
   .scan-pulse,

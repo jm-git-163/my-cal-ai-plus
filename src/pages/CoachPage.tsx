@@ -466,9 +466,13 @@ export function CoachPage() {
       </div>
 
       <div className="rounded-2xl bg-brand-green-soft/70 px-4 py-3 text-sm text-brand-ink dark:bg-brand-green/15 dark:text-white/80">
-        {tReplace(t.dashboard.remaining, { n: String(Math.max(0, remaining.calories)) })}
+        {remaining.calories < 0
+          ? `${t.dashboard.overGoal} · ${Math.abs(remaining.calories)} kcal`
+          : tReplace(t.dashboard.remaining, { n: String(remaining.calories) })}
         {' · '}
-        P {Math.max(0, remaining.protein)}g
+        {remaining.protein < 0
+          ? `P +${Math.abs(remaining.protein)}g`
+          : `P ${remaining.protein}g ${locale === 'ko' ? '남음' : 'left'}`}
       </div>
 
       {staleLocale && (

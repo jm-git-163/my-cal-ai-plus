@@ -691,6 +691,138 @@ function enforceNoDataTrends(
   }
 }
 
+/** Rough check: Korean locale must not return Latin-only coaching copy. */
+function looksMostlyEnglish(text: string): boolean {
+  const s = (text || '').trim()
+  if (s.length < 8) return false
+  const latin = (s.match(/[A-Za-z]/g) || []).length
+  const hangul = (s.match(/[\uAC00-\uD7A3]/g) || []).length
+  return latin >= 12 && hangul === 0
+}
+
+type CoachParsed = {
+  summary: string
+  advice: string
+  focus: string[]
+  predicted_goal_note: string
+  weight_trend: { direction: string; estimate_4w: string; explanation: string }
+  muscle_trend: { direction: string; estimate_4w: string; explanation: string }
+  energy_trend: { direction: string; explanation: string }
+  outlook_2w: string
+  outlook_4w: string
+  outlook_8w: string
+  disclaimer: string
+}
+
+/**
+ * Final truth pass: today's logged intake beats multi-day projection for headline coaching.
+ * Also hard-locks language so KO users never see English calorie advice.
+ */
+function enforceTodayTruth(
+  parsed: CoachParsed,
+  todayCal: number,
+  todayPro: number,
+  goalCalories: number,
+  goalProtein: number,
+  mode: 'lose' | 'gain' | 'maintain',
+  lang: string,
+): CoachParsed {
+  if (goalCalories <= 0 || todayCal <= 0) return parsed
+  const ko = lang !== 'English'
+  const over = todayCal > goalCalories * 1.05
+  const under = todayCal < goalCalories * 0.9
+  const overKcal = Math.round(todayCal - goalCalories)
+  const underKcal = Math.round(goalCalories - todayCal)
+  const proteinShort = goalProtein > 0 && todayPro < goalProtein * 0.9
+  const uniqFocus = (tags: string[]) =>
+    tags
+      .filter((v, i, a) => a.findIndex((x) => x.toLowerCase() === v.toLowerCase()) === i)
+      .slice(0, 4)
+
+  if (over) {
+    return {
+      ...parsed,
+      summary: ko
+        ? `오늘 칼로리가 목표보다 약 ${overKcal}kcal 많아요`
+        : `Today you’re about ${overKcal} kcal over your goal`,
+      advice: ko
+        ? proteinShort
+          ? `오늘은 이미 목표를 넘겼어요. 더 먹지 말고, 단백질만 가볍게 채우세요(살코기·계란·두부). 내일은 간식·음료·소스를 줄여 목표(${goalCalories}kcal)에 맞춰 보세요.`
+          : `오늘은 이미 목표를 넘겼어요. 추가 간식·음료는 쉬고, 내일은 밥·소스·간식을 줄여 ${goalCalories}kcal 근처에 맞춰 보세요.`
+        : proteinShort
+          ? `You’re already over today’s calorie goal — don’t add more food, just a light protein top-up if needed. Tomorrow trim snacks/drinks/sauces toward ${goalCalories} kcal.`
+          : `You’re already over today’s calorie goal — skip extra snacks/drinks and aim nearer ${goalCalories} kcal tomorrow.`,
+      predicted_goal_note: ko
+        ? `오늘처럼 초과한 날은 ‘더 적게 먹었다’가 아니라 초과예요. 다음 끼니·내일부터 목표에 다시 맞추면 됩니다.`
+        : `Today is over goal — not under. Recenter on the goal from the next meal / tomorrow.`,
+      focus: uniqFocus([
+        ko ? '칼로리 조절' : 'Trim calories',
+        proteinShort ? (ko ? '단백질 유지' : 'Keep protein') : ko ? '내일 맞추기' : 'Reset tomorrow',
+      ]),
+      energy_trend: {
+        direction: 'stable',
+        explanation: ko
+          ? `오늘 섭취(~${Math.round(todayCal)}kcal)는 목표를 넘긴 상태예요. 내일부터 목표에 맞추면 에너지 기복도 줄어들어요.`
+          : `Today’s intake (~${Math.round(todayCal)} kcal) is over goal — recentering tomorrow usually keeps energy steadier.`,
+      },
+      weight_trend: {
+        ...parsed.weight_trend,
+        explanation: ko
+          ? looksMostlyEnglish(parsed.weight_trend?.explanation || '')
+            ? `오늘 칼로리가 목표보다 많아 체중 감소 속도는 느려질 수 있어요. 며칠 평균으로 목표 근처에 맞추는 게 중요합니다.`
+            : parsed.weight_trend.explanation
+          : parsed.weight_trend.explanation,
+      },
+      outlook_2w: ko && looksMostlyEnglish(parsed.outlook_2w)
+        ? `오늘처럼 초과가 이어지면 2주 감량 속도가 둔해질 수 있어요. 목표 칼로리로 되돌리면 됩니다.`
+        : parsed.outlook_2w,
+      outlook_4w: ko && looksMostlyEnglish(parsed.outlook_4w)
+        ? `4주 기준으로는 목표 칼로리를 지키는 날이 많을수록 감량·유지가 안정적이에요.`
+        : parsed.outlook_4w,
+      outlook_8w: ko && looksMostlyEnglish(parsed.outlook_8w)
+        ? `8주 전망은 하루 기록이 쌓일수록 정확해져요. 초과한 날은 다음 날 목표에 다시 맞추세요.`
+        : parsed.outlook_8w,
+      disclaimer: ko
+        ? '추정 코칭이며 의료 조언이 아닙니다.'
+        : parsed.disclaimer || 'Estimates only — not medical advice.',
+    }
+  }
+
+  if (under && mode === 'gain') {
+    return {
+      ...parsed,
+      summary: ko
+        ? `오늘 칼로리가 목표보다 약 ${underKcal}kcal 부족해요`
+        : `Today you’re about ${underKcal} kcal under your gain goal`,
+      advice: ko
+        ? `증량 중이니 오늘 남은 칼로리를 탄수화물+단백질로 채워 보세요.`
+        : `For gain mode, fill the remaining calories with carbs + protein.`,
+      focus: uniqFocus([ko ? '칼로리 채우기' : 'Add calories', ...(parsed.focus || [])]),
+    }
+  }
+
+  // If model still wrote English while locale is Korean, replace headline fields.
+  if (ko) {
+    const fieldsEnglish =
+      looksMostlyEnglish(parsed.summary) ||
+      looksMostlyEnglish(parsed.advice) ||
+      looksMostlyEnglish(parsed.predicted_goal_note)
+    if (fieldsEnglish && !over && !under) {
+      return {
+        ...parsed,
+        summary: `오늘 약 ${Math.round(todayCal)}kcal 기록했어요 (목표 ${goalCalories}kcal)`,
+        advice: proteinShort
+          ? `칼로리는 근처예요. 단백질을 목표에 가깝게 더 챙기면 좋아요.`
+          : `지금 페이스를 유지하고, 채소·수분과 함께 목표 근처에 머무르세요.`,
+        predicted_goal_note: `하루 기록 기준으로 코칭했어요. 미기록 끼니가 있으면 추정이 달라질 수 있어요.`,
+        focus: uniqFocus(['균형 유지', ...(parsed.focus || []).filter((f) => !looksMostlyEnglish(f))]),
+      }
+    }
+  }
+
+  return parsed
+}
+
 /**
  * AI Coach via Responses API + Structured Outputs.
  * Missing photos ≠ 0 kcal; partial days are filled from history/goals for projection.
@@ -763,26 +895,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const projectedCal = trend.projected_daily_calories ?? trend.avg_daily_calories
     const projectedPro = trend.projected_daily_protein ?? trend.avg_daily_protein
-    // Never tell the user they are "under" if today's actual intake is already over goal.
-    const intakeCal =
-      goalCalories > 0 && todayTotals.calories > goalCalories ? todayTotals.calories : projectedCal
-    const intakePro =
-      todayTotals.protein > projectedPro ? todayTotals.protein : projectedPro
+    // Today’s logged intake is the source of truth for “did I over/under eat today?”
+    const hasTodayLog = todayTotals.calories > 0
+    const intakeCal = hasTodayLog ? todayTotals.calories : projectedCal
+    const intakePro = hasTodayLog ? todayTotals.protein : projectedPro
     const healthBand = intakeHealthBand(intakeCal, goalCalories, safeFloor)
     const proteinBand = proteinAdequacy(intakePro, goalProtein)
 
+    // Gaps for the model: never claim “under” when today is already over goal.
+    const todayCalorieGap = hasTodayLog && goalCalories > 0 ? todayTotals.calories - goalCalories : null
+    const todayProteinGap = hasTodayLog && goalProtein > 0 ? todayTotals.protein - goalProtein : null
+    const coachingCalorieGap =
+      todayCalorieGap != null && todayTotals.calories > goalCalories
+        ? todayCalorieGap
+        : calorieGap
+    const coachingProteinGap = todayProteinGap != null ? todayProteinGap : proteinGap
+
     const payload = {
       name,
+      locale: lang,
+      language_lock: lang,
       goals,
       weight_goal_mode: mode,
       currentWeightKg: currentWeightKg ?? null,
       goalWeightKg: goalWeightKg ?? null,
       safe_calorie_floor: safeFloor,
+      today_totals: todayTotals,
+      today_calorie_gap_vs_goal: todayCalorieGap,
+      today_protein_gap_vs_goal: todayProteinGap,
       intake_health_band: healthBand,
       protein_adequacy: proteinBand,
       trend,
-      calorie_gap_vs_goal: calorieGap,
-      protein_gap_vs_goal: proteinGap,
+      calorie_gap_vs_goal: coachingCalorieGap,
+      protein_gap_vs_goal: coachingProteinGap,
       meal_count: meals.length,
       meals: meals.map((m) => ({
         f: String(m.food || '').slice(0, 48),
@@ -801,32 +946,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? { reasoning: { effort: getFastReasoningEffort() } }
         : {}),
       instructions: `My Cal AI Plus coach. No numeric score — balanced, actionable coaching.
+HARD LANGUAGE RULE: Write EVERY user-facing string (summary, advice, focus, predicted_goal_note, all trend explanations, outlook_2w/4w/8w, disclaimer) in ${lang} only. Zero English words when language_lock is Korean. Zero Korean when English.
+
 Priority: (1) health & enough fuel (2) THEIR calorie goal sustainably (3) protein when short for muscle (4) fiber/veg, energy, sleep, training support.
-User strings in ${lang}. Specific numbers from JSON. Kind, not preachy. Match weight_goal_mode=${mode}.
+Specific numbers from JSON. Kind, not preachy. Match weight_goal_mode=${mode}.
 
-CRITICAL — calorie math:
-- Days with NO photos are excluded (never 0 kcal).
-- Use projected_daily_* for outlook when projection_usable=true; never invent meal×2/3.
-- projected_daily_protein from meal history only.
+CRITICAL — today vs projection:
+- today_totals = what the user ACTUALLY logged today. This beats projected averages for summary/advice.
+- If today_calorie_gap_vs_goal > 0 (or intake_health_band=over), the user ATE MORE than goal today — say OVER, never "under", "부족", "eat more calories", or "too little".
+- If today_calorie_gap_vs_goal < 0, they are under today's goal so far (day may still be open).
+- Use projected_daily_* only for multi-day outlook / weight_trend, and say it is an estimate.
+- Days with NO photos are excluded (never 0 kcal). Never invent meal×2/3.
 - lose = calorie GOAL is already the deficit — aim for THAT goal, not deeper crash.
-- Cite calorie_gap_vs_goal and protein_gap_vs_goal.
 
-CRITICAL — goal-aware coaching (not protein/fat-loss only):
+CRITICAL — goal-aware coaching:
 - Cover the WORST gap first (calories OR protein OR energy). If protein is already ok, do NOT make every tip about protein.
-- Diversify habits when on track: vegetables/fiber, hydration, sleep, strength training, meal spacing, cooking oils/sauces.
-- lose + protein ok → sustainable near-goal intake, satiety from volume veg + adequate protein, protect muscle with training — not “more chicken only”.
-- lose + protein low → then protein-first (eggs, tofu, fish, yogurt) while staying near calorie goal.
-- gain → calories + carbs around activity + protein for training; not only protein powder talk.
-- maintain → balanced plate (veg + protein + carbs), steady routine.
-- intake_health_band=on_target + protein ok → affirm balance; ONE gentle habit that is NOT always protein.
-- intake_health_band=over (lose/maintain) → trim snacks/drinks/sauces/portions; keep protein if already ok, don’t invent a protein crisis.
-- intake_health_band=unsafe_under or << safe_calorie_floor(${safeFloor}) → eat UP toward calorie goal; never praise faster loss.
-- summary: one honest headline vs goals. advice: 2–4 concrete steps (~280 chars). focus: 2–4 tags.
-- predicted_goal_note: sustainable path for THEIR weight mode (health > crash).
+- intake_health_band=over (lose/maintain) → trim snacks/drinks/sauces/portions; keep protein if ok.
+- intake_health_band=unsafe_under → eat UP toward calorie goal; never praise faster loss.
+- summary: one honest headline vs goals (prefer TODAY numbers when today_totals.calories > 0).
+- advice: 2–4 concrete steps (~280 chars). focus: 2–4 short tags in ${lang}.
+- predicted_goal_note: sustainable path for THEIR weight mode.
 
 CRITICAL — muscle / outlook:
 - muscle_trend follows protein vs goal; <85% → decrease + protein first.
-- Light snack-only days are not full protein days.
 - outlook ranges wider when confidence=low or fills_unlogged_meals=true.
 
 Fields: summary, advice, focus, predicted_goal_note,
@@ -840,7 +982,7 @@ Meal keys: f=food t=type c=kcal p/cb/ft=macros d=YYYY-MM-DD.`,
           schema: coachSchema,
         },
       },
-      input: `Coach from JSON:\n${JSON.stringify(payload)}`,
+      input: `Coach from JSON (reply fully in ${lang}):\n${JSON.stringify(payload)}`,
     })
 
     for (const item of response.output) {
@@ -874,10 +1016,12 @@ Meal keys: f=food t=type c=kcal p/cb/ft=macros d=YYYY-MM-DD.`,
     if (!trend.projection_usable || trend.meal_count === 0) {
       parsed = enforceNoDataTrends(parsed, lang)
     } else {
-      const proteinForMuscle =
-        trend.projected_daily_protein ?? trend.avg_daily_protein
-      const calForHealth =
-        trend.projected_daily_calories ?? trend.avg_daily_calories
+      const proteinForMuscle = hasTodayLog
+        ? todayTotals.protein
+        : trend.projected_daily_protein ?? trend.avg_daily_protein
+      const calForHealth = hasTodayLog
+        ? todayTotals.calories
+        : trend.projected_daily_calories ?? trend.avg_daily_calories
       parsed = enforceMuscleFromProtein(parsed, proteinForMuscle, goalProtein, lang)
       parsed = enforceHealthFirst(
         parsed,
@@ -896,6 +1040,15 @@ Meal keys: f=food t=type c=kcal p/cb/ft=macros d=YYYY-MM-DD.`,
         goalCalories,
         goalProtein,
         safeFloor,
+        mode,
+        lang,
+      )
+      parsed = enforceTodayTruth(
+        parsed,
+        todayTotals.calories,
+        todayTotals.protein,
+        goalCalories,
+        goalProtein,
         mode,
         lang,
       )
