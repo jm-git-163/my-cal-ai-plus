@@ -21,9 +21,14 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
   const [error, setError] = useState<string | null>(null)
   const [correctionNote, setCorrectionNote] = useState('')
   const [draft, setDraft] = useState(() => draftFromMeal(meal))
+  const [baseline, setBaseline] = useState(() => draftFromMeal(meal))
 
   useEffect(() => {
-    if (!editing) setDraft(draftFromMeal(meal))
+    if (!editing) {
+      const next = draftFromMeal(meal)
+      setDraft(next)
+      setBaseline(next)
+    }
   }, [meal, editing])
 
   const time = new Date(meal.createdAt).toLocaleTimeString(locale === 'ko' ? 'ko-KR' : 'en-US', {
@@ -36,11 +41,35 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
   const assumptions = meal.assumptions?.filter((s) => s.trim()) ?? []
   const canRecalc = Boolean(meal.imageDataUrl?.startsWith('data:image/')) && Boolean(onUpdate)
 
+  function startEdit() {
+    const next = draftFromMeal(meal)
+    setDraft(next)
+    setBaseline(next)
+    setEditing(true)
+    setError(null)
+  }
+
   function closeEdit() {
     setEditing(false)
     setCorrectionNote('')
     setError(null)
-    setDraft(draftFromMeal(meal))
+    const next = draftFromMeal(meal)
+    setDraft(next)
+    setBaseline(next)
+  }
+
+  function onCaloriesChange(calories: number) {
+    setDraft(scaleMacrosToCalories(baseline, calories))
+  }
+
+  function onMacroChange(key: 'protein' | 'carbs' | 'fat' | 'grams', value: number) {
+    setDraft((d) => {
+      const next = { ...d, [key]: value }
+      if (key !== 'grams') {
+        next.calories = caloriesFromMacros(next.protein, next.carbs, next.fat)
+      }
+      return next
+    })
   }
 
   async function saveManual() {
@@ -48,6 +77,15 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
     setSaving(true)
     setError(null)
     try {
+      const ratio =
+        meal.calories > 0 ? draft.calories / meal.calories : meal.grams > 0 ? draft.grams / meal.grams : 1
+      const scaledItems =
+        meal.items?.map((it) => ({
+          ...it,
+          grams: Math.max(0, Math.round(it.grams * ratio)),
+          calories: Math.max(0, Math.round(it.calories * ratio)),
+        })) ?? meal.items
+
       await onUpdate(meal.id, {
         food: draft.food.trim() || meal.food,
         grams: draft.grams,
@@ -55,6 +93,7 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
         protein: draft.protein,
         carbs: draft.carbs,
         fat: draft.fat,
+        items: scaledItems,
       })
       setEditing(false)
       setCorrectionNote('')
@@ -267,15 +306,7 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
               )}
 
               {onUpdate && (
-                <button
-                  type="button"
-                  className="btn-secondary w-full"
-                  onClick={() => {
-                    setDraft(draftFromMeal(meal))
-                    setEditing(true)
-                    setError(null)
-                  }}
-                >
+                <button type="button" className="btn-secondary w-full" onClick={startEdit}>
                   {t.meal.edit}
                 </button>
               )}
@@ -307,7 +338,7 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
                     min={0}
                     max={5000}
                     className="field-input"
-                    onValueChange={(calories) => setDraft((d) => ({ ...d, calories }))}
+                    onValueChange={onCaloriesChange}
                   />
                 </label>
                 <label className="block text-sm font-medium text-brand-ink dark:text-white">
@@ -317,7 +348,7 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
                     min={0}
                     max={5000}
                     className="field-input"
-                    onValueChange={(grams) => setDraft((d) => ({ ...d, grams }))}
+                    onValueChange={(grams) => onMacroChange('grams', grams)}
                   />
                 </label>
                 <label className="block text-sm font-medium text-brand-ink dark:text-white">
@@ -328,7 +359,7 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
                     max={500}
                     decimals={1}
                     className="field-input"
-                    onValueChange={(protein) => setDraft((d) => ({ ...d, protein }))}
+                    onValueChange={(protein) => onMacroChange('protein', protein)}
                   />
                 </label>
                 <label className="block text-sm font-medium text-brand-ink dark:text-white">
@@ -339,7 +370,7 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
                     max={500}
                     decimals={1}
                     className="field-input"
-                    onValueChange={(carbs) => setDraft((d) => ({ ...d, carbs }))}
+                    onValueChange={(carbs) => onMacroChange('carbs', carbs)}
                   />
                 </label>
                 <label className="block text-sm font-medium text-brand-ink dark:text-white">
@@ -350,7 +381,7 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
                     max={500}
                     decimals={1}
                     className="field-input"
-                    onValueChange={(fat) => setDraft((d) => ({ ...d, fat }))}
+                    onValueChange={(fat) => onMacroChange('fat', fat)}
                   />
                 </label>
               </div>
@@ -419,5 +450,33 @@ function draftFromMeal(meal: MealEntry) {
     protein: meal.protein,
     carbs: meal.carbs,
     fat: meal.fat,
+  }
+}
+
+type NutritionDraft = ReturnType<typeof draftFromMeal>
+
+function round1(n: number) {
+  return Math.round(n * 10) / 10
+}
+
+/** Atwater: kcal ≈ 4P + 4C + 9F */
+function caloriesFromMacros(protein: number, carbs: number, fat: number) {
+  return Math.max(0, Math.round(4 * protein + 4 * carbs + 9 * fat))
+}
+
+/** Keep P/C/F/g in proportion when the user changes total calories. */
+function scaleMacrosToCalories(base: NutritionDraft, calories: number): NutritionDraft {
+  const nextCal = Math.max(0, Math.round(calories))
+  if (base.calories <= 0) {
+    return { ...base, calories: nextCal }
+  }
+  const ratio = nextCal / base.calories
+  return {
+    ...base,
+    calories: nextCal,
+    protein: round1(base.protein * ratio),
+    carbs: round1(base.carbs * ratio),
+    fat: round1(base.fat * ratio),
+    grams: Math.max(0, Math.round(base.grams * ratio)),
   }
 }
