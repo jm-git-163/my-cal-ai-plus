@@ -34,7 +34,6 @@ export function ScanPage() {
   const [savedId, setSavedId] = useState<string | null>(null)
   const [saveNote, setSaveNote] = useState<string | null>(null)
   const [showDetails, setShowDetails] = useState(false)
-  const [showCorrect, setShowCorrect] = useState(false)
   const [correctionNote, setCorrectionNote] = useState('')
   const [refining, setRefining] = useState(false)
   const pendingPatchRef = useRef<Partial<NutritionResult>>({})
@@ -100,7 +99,6 @@ export function ScanPage() {
     setResult(null)
     setSavedId(null)
     setSaveNote(null)
-    setShowCorrect(false)
     setCorrectionNote('')
     setRefining(false)
     setShowDetails(false)
@@ -244,7 +242,6 @@ export function ScanPage() {
     setError(null)
     setSavedId(null)
     setSaveNote(null)
-    setShowCorrect(false)
     setCorrectionNote('')
     setRefining(false)
     setShowDetails(false)
@@ -418,143 +415,194 @@ export function ScanPage() {
 
             <button
               type="button"
-              onClick={() => setShowCorrect((v) => !v)}
-              className="w-full rounded-xl border border-brand-orange/25 bg-brand-orange-soft/50 px-3 py-2.5 text-left text-sm font-semibold text-brand-ink dark:border-brand-orange/30 dark:bg-brand-orange/10 dark:text-white"
-            >
-              {showCorrect ? t.scan.correctHide : t.scan.correctToggle}
-            </button>
-
-            {showCorrect && (
-              <div className="space-y-3 rounded-[22px] border border-black/5 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5">
-                <div>
-                  <p className="font-display text-base font-semibold text-brand-ink dark:text-white">
-                    {t.scan.correctTitle}
-                  </p>
-                  <p className="mt-1 text-sm text-brand-muted dark:text-white/55">{t.scan.correctHint}</p>
-                </div>
-
-                <label className="block text-sm font-medium text-brand-ink dark:text-white">
-                  {t.scan.foodName}
-                  <input
-                    type="text"
-                    value={result.food}
-                    onChange={(e) => applyResultPatch({ food: e.target.value })}
-                    className="field-input"
-                  />
-                </label>
-
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <label className="block text-sm font-medium text-brand-ink dark:text-white">
-                    kcal
-                    <NumberField
-                      value={result.calories}
-                      min={0}
-                      max={5000}
-                      className="field-input"
-                      onValueChange={(calories) => applyResultPatch({ calories })}
-                    />
-                  </label>
-                  <label className="block text-sm font-medium text-brand-ink dark:text-white">
-                    g
-                    <NumberField
-                      value={result.grams}
-                      min={0}
-                      max={5000}
-                      className="field-input"
-                      onValueChange={(grams) => applyResultPatch({ grams })}
-                    />
-                  </label>
-                  <label className="block text-sm font-medium text-brand-ink dark:text-white">
-                    P
-                    <NumberField
-                      value={result.protein}
-                      min={0}
-                      max={500}
-                      decimals={1}
-                      className="field-input"
-                      onValueChange={(protein) => applyResultPatch({ protein })}
-                    />
-                  </label>
-                  <label className="block text-sm font-medium text-brand-ink dark:text-white">
-                    C
-                    <NumberField
-                      value={result.carbs}
-                      min={0}
-                      max={500}
-                      decimals={1}
-                      className="field-input"
-                      onValueChange={(carbs) => applyResultPatch({ carbs })}
-                    />
-                  </label>
-                  <label className="block text-sm font-medium text-brand-ink dark:text-white">
-                    F
-                    <NumberField
-                      value={result.fat}
-                      min={0}
-                      max={500}
-                      decimals={1}
-                      className="field-input"
-                      onValueChange={(fat) => applyResultPatch({ fat })}
-                    />
-                  </label>
-                </div>
-
-                <label className="block text-sm font-medium text-brand-ink dark:text-white">
-                  {t.scan.correctNote}
-                  <textarea
-                    value={correctionNote}
-                    onChange={(e) => setCorrectionNote(e.target.value.slice(0, 600))}
-                    rows={3}
-                    placeholder={t.scan.correctNotePlaceholder}
-                    className="field-input min-h-[5.5rem] resize-y"
-                  />
-                </label>
-
-                <button
-                  type="button"
-                  className="btn-secondary w-full"
-                  disabled={refining || !correctionNote.trim()}
-                  onClick={() => void onReanalyzeWithCorrection()}
-                >
-                  {refining ? t.scan.reanalyzing : t.scan.reanalyze}
-                </button>
-              </div>
-            )}
-
-            <button
-              type="button"
               onClick={() => setShowDetails((v) => !v)}
               className="w-full rounded-xl bg-black/[0.03] px-3 py-2.5 text-left text-sm font-semibold text-brand-ink dark:bg-white/5 dark:text-white"
             >
-              {showDetails ? t.scan.hideAdvanced : t.scan.assumptions} / {t.scan.fieldConfidence}
+              {showDetails ? t.scan.hideAnalysis : t.scan.viewAnalysis}
             </button>
 
             {showDetails && (
-              <div className="space-y-3">
-                {result.portionBasis && (
-                  <div className="rounded-xl bg-white/70 px-3 py-2 text-sm dark:bg-white/10">
-                    <p className="text-xs font-bold text-brand-muted">{t.scan.portionBasis}</p>
-                    <p className="mt-1">{result.portionBasis}</p>
+              <div className="space-y-4">
+                <div className="space-y-3 rounded-[22px] border border-black/5 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5">
+                  <p className="text-xs font-bold uppercase tracking-wide text-brand-muted">
+                    {t.scan.viewAnalysis}
+                  </p>
+
+                  {(result.items?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-xs font-bold text-brand-muted">{t.scan.multiItems}</p>
+                      <ul className="mt-1.5 space-y-1.5">
+                        {result.items!.map((it) => (
+                          <li
+                            key={`${it.name}-${it.grams}-${it.calories}`}
+                            className="flex items-baseline justify-between gap-2 text-sm text-brand-ink dark:text-white/85"
+                          >
+                            <span className="min-w-0 break-words">{it.name}</span>
+                            <span className="tabular shrink-0 text-brand-muted">
+                              {it.grams}g · {it.calories}kcal
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {(result.ingredients?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-xs font-bold text-brand-muted">{t.scan.ingredients}</p>
+                      <p className="mt-1 text-sm leading-relaxed text-brand-ink dark:text-white/85">
+                        {result.ingredients!.join(' · ')}
+                      </p>
+                    </div>
+                  )}
+
+                  {result.portionBasis && (
+                    <div>
+                      <p className="text-xs font-bold text-brand-muted">{t.scan.portionBasis}</p>
+                      <p className="mt-1 text-sm text-brand-ink dark:text-white/85">{result.portionBasis}</p>
+                    </div>
+                  )}
+
+                  {result.portion_note && (
+                    <div>
+                      <p className="text-xs font-bold text-brand-muted">{t.scan.portionNote}</p>
+                      <p className="mt-1 text-sm text-brand-ink dark:text-white/85">{result.portion_note}</p>
+                    </div>
+                  )}
+
+                  {result.visible_text && (
+                    <div>
+                      <p className="text-xs font-bold text-brand-muted">{t.scan.visibleText}</p>
+                      <p className="mt-1 text-sm text-brand-ink dark:text-white/85">{result.visible_text}</p>
+                    </div>
+                  )}
+
+                  {result.assumptions && result.assumptions.length > 0 && (
+                    <div>
+                      <p className="text-xs font-bold text-brand-muted">{t.scan.assumptions}</p>
+                      <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm text-brand-ink dark:text-white/85">
+                        {result.assumptions.map((a) => (
+                          <li key={a}>{a}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {result.fieldConfidence && (
+                    <div>
+                      <p className="mb-2 text-xs font-bold text-brand-muted">{t.scan.fieldConfidence}</p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <ConfidenceBar label={t.scan.confFood} value={result.fieldConfidence.food} />
+                        <ConfidenceBar label={t.scan.confGrams} value={result.fieldConfidence.grams} />
+                        <ConfidenceBar label={t.scan.confCal} value={result.fieldConfidence.calories} />
+                        <ConfidenceBar label={t.scan.confP} value={result.fieldConfidence.protein} />
+                        <ConfidenceBar label={t.scan.confC} value={result.fieldConfidence.carbs} />
+                        <ConfidenceBar label={t.scan.confF} value={result.fieldConfidence.fat} />
+                      </div>
+                    </div>
+                  )}
+
+                  {result.tip && (
+                    <p className="text-sm text-brand-muted dark:text-white/60">
+                      <span className="font-semibold text-brand-green">{t.scan.aiTip}</span> {result.tip}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-3 rounded-[22px] border border-brand-orange/25 bg-brand-orange-soft/40 p-4 dark:border-brand-orange/30 dark:bg-brand-orange/10">
+                  <div>
+                    <p className="font-display text-base font-semibold text-brand-ink dark:text-white">
+                      {t.scan.correctTitle}
+                    </p>
+                    <p className="mt-1 text-sm text-brand-muted dark:text-white/55">{t.scan.correctHint}</p>
                   </div>
-                )}
-                {result.assumptions && result.assumptions.length > 0 && (
-                  <ul className="list-disc space-y-1 rounded-xl border border-brand-orange/20 bg-brand-orange-soft/40 px-5 py-3 text-sm dark:bg-brand-orange/10">
-                    {result.assumptions.map((a) => (
-                      <li key={a}>{a}</li>
-                    ))}
-                  </ul>
-                )}
-                {result.fieldConfidence && (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <ConfidenceBar label={t.scan.confFood} value={result.fieldConfidence.food} />
-                    <ConfidenceBar label={t.scan.confGrams} value={result.fieldConfidence.grams} />
-                    <ConfidenceBar label={t.scan.confCal} value={result.fieldConfidence.calories} />
-                    <ConfidenceBar label={t.scan.confP} value={result.fieldConfidence.protein} />
-                    <ConfidenceBar label={t.scan.confC} value={result.fieldConfidence.carbs} />
-                    <ConfidenceBar label={t.scan.confF} value={result.fieldConfidence.fat} />
+
+                  <label className="block text-sm font-medium text-brand-ink dark:text-white">
+                    {t.scan.foodName}
+                    <input
+                      type="text"
+                      value={result.food}
+                      onChange={(e) => applyResultPatch({ food: e.target.value })}
+                      className="field-input"
+                    />
+                  </label>
+
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <label className="block text-sm font-medium text-brand-ink dark:text-white">
+                      kcal
+                      <NumberField
+                        value={result.calories}
+                        min={0}
+                        max={5000}
+                        className="field-input"
+                        onValueChange={(calories) => applyResultPatch({ calories })}
+                      />
+                    </label>
+                    <label className="block text-sm font-medium text-brand-ink dark:text-white">
+                      g
+                      <NumberField
+                        value={result.grams}
+                        min={0}
+                        max={5000}
+                        className="field-input"
+                        onValueChange={(grams) => applyResultPatch({ grams })}
+                      />
+                    </label>
+                    <label className="block text-sm font-medium text-brand-ink dark:text-white">
+                      P
+                      <NumberField
+                        value={result.protein}
+                        min={0}
+                        max={500}
+                        decimals={1}
+                        className="field-input"
+                        onValueChange={(protein) => applyResultPatch({ protein })}
+                      />
+                    </label>
+                    <label className="block text-sm font-medium text-brand-ink dark:text-white">
+                      C
+                      <NumberField
+                        value={result.carbs}
+                        min={0}
+                        max={500}
+                        decimals={1}
+                        className="field-input"
+                        onValueChange={(carbs) => applyResultPatch({ carbs })}
+                      />
+                    </label>
+                    <label className="block text-sm font-medium text-brand-ink dark:text-white">
+                      F
+                      <NumberField
+                        value={result.fat}
+                        min={0}
+                        max={500}
+                        decimals={1}
+                        className="field-input"
+                        onValueChange={(fat) => applyResultPatch({ fat })}
+                      />
+                    </label>
                   </div>
-                )}
-                {result.tip && <p className="text-sm text-brand-muted dark:text-white/60">{result.tip}</p>}
+
+                  <label className="block text-sm font-medium text-brand-ink dark:text-white">
+                    {t.scan.correctNote}
+                    <textarea
+                      value={correctionNote}
+                      onChange={(e) => setCorrectionNote(e.target.value.slice(0, 600))}
+                      rows={3}
+                      placeholder={t.scan.correctNotePlaceholder}
+                      className="field-input min-h-[5.5rem] resize-y"
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    className="btn-secondary w-full"
+                    disabled={refining || !correctionNote.trim()}
+                    onClick={() => void onReanalyzeWithCorrection()}
+                  >
+                    {refining ? t.scan.reanalyzing : t.scan.reanalyze}
+                  </button>
+                </div>
               </div>
             )}
 

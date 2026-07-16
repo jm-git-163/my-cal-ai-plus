@@ -162,11 +162,9 @@ export const translations = {
         'If the photo is blurry, estimates get wider — a quick retake can help next time.',
         'Vegetables add volume without blowing the calorie budget.',
       ],
-      correctTitle: 'Fix what the photo missed',
+      correctTitle: 'Fix what looked wrong',
       correctHint:
-        'AI can miss syrup flavors, hidden veggies under rice, or exact sizes. Edit numbers yourself, or describe the mistake and re-estimate.',
-      correctToggle: 'Edit / correct result',
-      correctHide: 'Hide correction',
+        'After reading the analysis above, edit the numbers yourself or describe the mistake so AI can re-estimate.',
       foodName: 'Food name',
       correctNote: 'What did it get wrong?',
       correctNotePlaceholder:
@@ -181,6 +179,8 @@ export const translations = {
         'Re-checking the photo with that context…',
         'Recounting calories & macros…',
       ],
+      viewAnalysis: 'View full analysis',
+      hideAnalysis: 'Hide analysis',
     },
     coach: {
       title: 'AI Coach',
@@ -490,11 +490,9 @@ export const translations = {
         '사진이 흐리면 추정 폭이 커져요. 다음엔 한 장만 더 선명하게 찍어 보세요.',
         '채소는 칼로리를 크게 안 올리면서 포만감을 채워 줘요.',
       ],
-      correctTitle: '사진으로 놓친 부분 고치기',
+      correctTitle: '틀린·빠진 부분 고치기',
       correctHint:
-        '시럽 맛·밥 밑 야채·실제 사이즈처럼 사진만으로 놓치기 쉬운 부분은 직접 고치거나, 짧게 적어 AI에 다시 추정시킬 수 있어요.',
-      correctToggle: '결과 수정하기',
-      correctHide: '수정 닫기',
+        '위에서 AI가 어떻게 봤는지 확인한 뒤, 숫자를 직접 고치거나 잘못을 짧게 적어 다시 추정하세요.',
       foodName: '음식 이름',
       correctNote: '잘못된 / 빠진 내용',
       correctNotePlaceholder:
@@ -509,6 +507,8 @@ export const translations = {
         '사진을 그 맥락으로 다시 보는 중…',
         '칼로리·영양을 다시 맞추는 중…',
       ],
+      viewAnalysis: '전체 분석 보기',
+      hideAnalysis: '분석 접기',
     },
     coach: {
       title: 'AI 코치',
