@@ -5,8 +5,8 @@ type Mode = 'recommend' | 'coach'
 interface CoachWaitPanelProps {
   mode: Mode
   title: string
-  stages: string[]
-  tips: string[]
+  stages: readonly string[]
+  tips: readonly string[]
   almost: string
   hint: string
   tipLabel: string
