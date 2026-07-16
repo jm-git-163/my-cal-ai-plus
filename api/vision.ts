@@ -269,7 +269,10 @@ Return structured nutrition with REQUIRED uncertainty fields:
 - fieldConfidence: 0-1 per field (food, grams, calories, protein, fat, carbs)
 - overall confidence 0-1
 - goalImpact: compare this meal to user's weight goal mode (${mode}).
-  help = supports goal, caution = hinders goal, neutral = mixed/insufficient context.
+  help = supports *sustainable* goal (protein-forward, reasonable portions).
+  caution = hinders goal OR is empty calories / very low protein for a main meal OR encourages crash restriction.
+  During lose: low-calorie alone is NOT automatically "help" — prioritize protein + satiety. Never praise starving.
+  neutral = mixed/insufficient context.
   Message in ${lang}, practical and non-medical.
 Do NOT give medical advice. Counts/portions are approximate.
 All user-facing strings in ${lang}.

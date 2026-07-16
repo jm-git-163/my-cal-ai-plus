@@ -112,7 +112,7 @@ export function ProfileSetupGate({ children }: { children: ReactNode }) {
         guideSeen: true,
         profileSetupDone: true,
       }
-      const rec = recommendDailyGoals(next)
+      const rec = recommendDailyGoals(next, settings.locale === 'en' ? 'en' : 'ko')
       await updateSettings({
         ...next,
         goals: rec.goals,

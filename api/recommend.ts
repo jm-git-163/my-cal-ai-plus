@@ -5,6 +5,7 @@ import {
   getOpenAI,
   supportsReasoningEffort,
 } from '../lib/openai.js'
+import { absoluteCalorieFloor, shouldPrioritizeNourishment } from '../lib/healthSafety.js'
 
 const OPTION_KINDS = ['meal', 'snack', 'hydrate', 'rest'] as const
 
@@ -166,14 +167,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       goals.calories > 0 ? Math.round((eaten.calories / goals.calories) * 100) : 0
     const nearGoalCalories =
       remaining.calories > 0 && remaining.calories < Math.max(350, goals.calories * 0.2)
-    /** Prefer water / skip food over another meal */
+    const safeFloor = absoluteCalorieFloor()
+    const needNourish = shouldPrioritizeNourishment({
+      eatenCalories: eaten.calories,
+      goalCalories: goals.calories,
+      eatenProtein: eaten.protein,
+      goalProtein: goals.protein,
+      mealCount: todayMeals.length,
+      safeFloor,
+    })
+    const proteinStillLow = goals.protein > 0 && eaten.protein < goals.protein * 0.7
+    /** Prefer water / skip food — but NEVER when the user is under-fueled. */
     const preferSkipFood =
-      overCalories ||
-      (lateNight && remaining.calories < 450) ||
-      (justAte && mode !== 'gain') ||
-      (mode === 'lose' && recentlyAte && nearGoalCalories) ||
-      (mode === 'lose' && lowRemaining) ||
-      (tod === 'afternoon' && recentlyAte && remaining.calories < 500 && mode !== 'gain')
+      !needNourish &&
+      (overCalories ||
+        (lateNight && remaining.calories < 450 && !proteinStillLow) ||
+        (justAte && mode !== 'gain' && !proteinStillLow) ||
+        (mode === 'lose' && recentlyAte && nearGoalCalories && !proteinStillLow) ||
+        (mode === 'lose' && lowRemaining && eaten.calories >= goals.calories * 0.7) ||
+        (tod === 'afternoon' &&
+          recentlyAte &&
+          remaining.calories < 500 &&
+          mode !== 'gain' &&
+          !proteinStillLow))
 
     const payload = {
       name,
@@ -202,6 +218,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         late_night: lateNight,
         minutes_since_last_meal: minsSince,
         prefer_skip_food: preferSkipFood,
+        prioritize_nourishment: needNourish,
+        protein_still_low: proteinStillLow,
+        safe_calorie_floor: safeFloor,
       },
       recent_meals: todayMeals.slice(0, 6).map((m) => ({
         f: String(m.food || '').slice(0, 40),
@@ -223,39 +242,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? { reasoning: { effort: getFastReasoningEffort() } }
         : {}),
       instructions: `You are My Cal AI Plus next-action coach — NOT a menu generator.
-Decide whether the user should EAT, SNACK, drink WATER, or do a short NON-FOOD activity to ride out hunger / keep a light fast.
+Decide whether the user should EAT, SNACK, drink WATER, or do a short NON-FOOD activity.
 Be concise. All user-facing strings must be in ${lang}.
+Health first: never push fasting when the user is under-fueled or protein-starved.
 
 Output fields:
 - meal_slot: localized time slot label (아침/점심/저녁/간식 or Breakfast/…)
-- situation_note: 1 honest sentence about NOW (time + remaining + whether an activity-or-wait is smarter than eating)
+- situation_note: 1 honest sentence about NOW
 - remaining_note: short leftover kcal/protein line
 - options: 2 or 3 items with kind (meal|snack|hydrate|rest), title, macros, reason
 - tip: one gentle tip
 
 Core philosophy:
-- Saying “don’t eat yet” is good coaching — prefer water + a short helpful activity over bare willpower.
-- Prefer skip/wait when prefer_skip_food is true, even if users asked “what to eat”.
-- kind=rest means a concrete activity (light walk, stretch, 5-min breathing/meditation, tidy desk, shower), NOT only “just endure hunger”.
+- Sustainable fat loss > skipping meals all day.
+- Saying “don’t eat yet” is OK only when prefer_skip_food is true AND prioritize_nourishment is false.
+- kind=rest means a concrete activity (walk, stretch, breathing), not “starve”.
 
 Decision rules (follow strictly):
-1) If prefer_skip_food OR over_calories OR just_ate_within_90min OR (late_night AND remaining calories < 450):
+0) If prioritize_nourishment OR protein_still_low with ample remaining calories:
+   - FIRST option MUST be kind=meal or kind=snack that is protein-forward (eggs, tofu, chicken, Greek yogurt, fish).
+   - Do NOT lead with hydrate/rest. Skipping food is unsafe here.
+1) Else if prefer_skip_food OR over_calories OR just_ate_within_90min OR (late_night AND remaining calories < 450):
    - FIRST option MUST be kind=hydrate OR kind=rest.
-   - Prefer actionable titles, e.g.:
-     KO: "10분 가벼운 산책", "물 마시고 5분 호흡명상", "스트레칭 후 공복 유지"
-     EN: "10-min easy walk", "Water + 5-min breathing", "Stretch, then keep fasting lightly"
-   - Pick activity by time: daytime → walk/stretch; late night / early morning → quiet breathing, light stretch, or hydrate (avoid energetic workouts at night).
+   - Prefer actionable titles (walk / water+breathing / stretch).
    - At most ONE light snack as alternative; NO full meal as first choice.
-2) If low_remaining_calories OR near_goal_calories with weight_goal_mode=lose:
-   - Lead with hydrate/rest activity; optional broth/fruit only if still-hungry language is needed.
-3) Else if it is a real meal_slot (아침/점심/저녁) AND calories remaining are ample AND not just_ate:
-   - Normal meal or protein-forward snack is OK first.
-4) weight_goal_mode lose → lean toward water/activity/volume foods; gain → fuller meals when macros allow; maintain → balanced, still allow activity-wait if just ate.
-5) Late night / early morning → hydrate + calm rest activity over dinner-like meals.
-6) Korean → everyday phrasing; English → practical phrasing.
-7) hydrate/rest macros must be ≈0.
-8) Never shame. Framing: movement/mindfulness helps the urge pass — not failure.
-9) Always return 2 or 3 options; when waiting is wise, put water/activity first.`,
+2) Else if low_remaining_calories OR near_goal_calories with weight_goal_mode=lose (and protein already OK):
+   - Lead with hydrate/rest; optional light snack only if still hungry.
+3) Else if real meal_slot AND calories remaining ample AND not just_ate:
+   - Normal meal or protein-forward snack first.
+4) weight_goal_mode lose → prefer volume + protein, not zero food; gain → fuller meals; maintain → balanced.
+5) Late night → hydrate + calm rest unless prioritize_nourishment.
+6) hydrate/rest macros ≈0. Never shame.
+7) Always return 2 or 3 options.`,
       text: {
         format: {
           type: 'json_schema',
@@ -315,8 +333,30 @@ Decision rules (follow strictly):
         }
       })
 
-    // Hard guarantee: when skip is wiser, lead with water/activity even if the model forgot.
-    if (preferSkipFood) {
+    // Hard guarantee: when under-fueled, lead with a protein meal — never skip-first.
+    if (needNourish || (proteinStillLow && remaining.calories > 250)) {
+      const foodFirst = options.find((o) => o.kind === 'meal' || o.kind === 'snack')
+      if (foodFirst) {
+        const restOpts = options.filter((o) => o !== foodFirst)
+        options.splice(0, options.length, foodFirst, ...restOpts)
+      } else {
+        const ko = lang === 'Korean'
+        const needP = Math.max(15, Math.round(remaining.protein))
+        options.unshift({
+          kind: 'meal',
+          title: ko ? '고단백 간단식 (계란·두부·닭가슴살)' : 'Simple high-protein plate (eggs, tofu, chicken)',
+          calories: Math.min(450, Math.max(250, Math.round(remaining.calories * 0.35))),
+          protein: Math.min(40, Math.max(20, needP)),
+          carbs: 20,
+          fat: 10,
+          reason: ko
+            ? '지금은 굶기보다 단백질을 채워 근육·에너지를 지키는 게 감량에도 유리해요.'
+            : 'Fuel with protein now — protecting muscle and energy beats skipping meals.',
+        })
+        while (options.length > 3) options.pop()
+      }
+    } else if (preferSkipFood) {
+      // Hard guarantee: when skip is wiser, lead with water/activity even if the model forgot.
       const skipFirst = options.find((o) => o.kind === 'hydrate' || o.kind === 'rest')
       if (skipFirst) {
         const restOpts = options.filter((o) => o !== skipFirst)
@@ -367,6 +407,7 @@ Decision rules (follow strictly):
         just_ate: justAte,
         late_night: lateNight,
         prefer_skip_food: preferSkipFood,
+        prioritize_nourishment: needNourish,
       },
       eaten: {
         calories: Math.round(eaten.calories),

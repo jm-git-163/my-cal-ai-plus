@@ -20,7 +20,7 @@ export function SettingsPage() {
     setForm(settings)
   }, [settings])
 
-  const preview = useMemo(() => recommendDailyGoals(form), [form])
+  const preview = useMemo(() => recommendDailyGoals(form, form.locale === 'en' ? 'en' : 'ko'), [form])
 
   function patchForm(partial: Partial<UserSettings>) {
     setForm((prev) => ({ ...prev, ...partial }))
@@ -39,7 +39,7 @@ export function SettingsPage() {
   }
 
   function applyRecommend() {
-    const rec = recommendDailyGoals(form)
+    const rec = recommendDailyGoals(form, form.locale === 'en' ? 'en' : 'ko')
     setForm((prev) => ({
       ...prev,
       goals: rec.goals,
@@ -295,6 +295,11 @@ export function SettingsPage() {
 
           <div className="rounded-2xl bg-brand/5 p-4 dark:bg-white/5">
             <p className="text-xs leading-relaxed text-brand-ink/80 dark:text-white/70">{summary}</p>
+            <p className="mt-2 text-[11px] leading-relaxed text-brand-muted dark:text-white/50">
+              <span className="font-semibold text-brand-green">{t.settings.healthNoteLabel}</span>
+              {' · '}
+              {preview.healthNote}
+            </p>
             <button
               type="button"
               onClick={applyRecommend}
@@ -306,6 +311,12 @@ export function SettingsPage() {
               <p className="mt-2 text-sm font-medium text-brand-green">{t.settings.recommendApplied}</p>
             )}
           </div>
+
+          {form.goals.calories > 0 && form.goals.calories < preview.safeCalorieFloor && (
+            <p className="rounded-2xl border border-brand-orange/30 bg-brand-orange-soft/40 px-3 py-2.5 text-xs leading-relaxed text-brand-ink dark:bg-brand-orange/10 dark:text-white/80">
+              {tReplace(t.settings.healthFloorWarn, { n: String(preview.safeCalorieFloor) })}
+            </p>
+          )}
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
             {goalFields.map(([key, label]) => (

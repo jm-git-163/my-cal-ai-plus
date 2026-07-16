@@ -154,11 +154,13 @@ export const translations = {
       score: 'Goal adherence',
       scoreOutOf: '{n} / 100',
       scoreHint:
-        'How close you are to YOUR calorie & protein targets. On a fat-loss plan, a high score means sticking to your deficit goal — not eating more.',
+        'How close you are to YOUR calorie & protein targets — sustainably. On a fat-loss plan, high score = near your planned deficit with enough protein. Eating far below your goal is not rewarded.',
       scoreBandLow: 'Off target',
       scoreBandMid: 'Getting there',
       scoreBandGood: 'On track',
       scoreBandGreat: 'Nailing goals',
+      healthUnsafe:
+        'Intake looks too low for health. Fat loss works best near your calorie goal with solid protein — not by crashing calories.',
       focus: 'Focus areas',
       error: 'Could not load coaching.',
       trendsTitle: 'If you keep eating like this',
@@ -275,8 +277,12 @@ export const translations = {
       modeLose: 'fat loss',
       modeGain: 'muscle gain',
       modeMaintain: 'maintain',
-      goalsHint: 'Hard to pick numbers yourself? Tap recommend after filling weight & profile. You can still tweak by hand.',
+      goalsHint:
+        'Hard to pick numbers yourself? Tap recommend after filling weight & profile. We keep deficits sustainable (health floor + protein-first). You can still tweak by hand.',
       themeHint: 'Dark is the default. Switch to light anytime here or with ☀ in the header.',
+      healthFloorWarn:
+        'This calorie goal is below the app’s safe floor (~{n} kcal). Faster loss isn’t healthier — consider raising it.',
+      healthNoteLabel: 'Health-first plan',
     },
     meal: {
       delete: 'Delete',
@@ -446,11 +452,13 @@ export const translations = {
       score: '목표 달성도',
       scoreOutOf: '{n}점 / 100점',
       scoreHint:
-        '내 칼로리·단백질 목표에 얼마나 가까운지예요. 감량 중이면 목표 칼로리(적자)에 맞출수록 점수가 높아요 — 많이 먹을수록 높은 게 아닙니다.',
+        '내 칼로리·단백질 목표에 얼마나 가까운지예요. 감량 중이면 계획된 적자 목표에 맞추고 단백질을 지킬수록 점수가 높아요. 목표보다 훨씬 적게 먹는 건 고득점이 아닙니다.',
       scoreBandLow: '목표에서 벗어남',
       scoreBandMid: '조금 더',
       scoreBandGood: '궤도에 있음',
       scoreBandGreat: '목표에 잘 맞춤',
+      healthUnsafe:
+        '섭취가 건강 하한보다 낮아 보여요. 감량은 목표 칼로리 근처에서 단백질을 지키며 하는 게 안전합니다 — 극단적 부족은 권하지 않아요.',
       focus: '집중 포인트',
       error: '코칭을 불러오지 못했습니다.',
       trendsTitle: '지금처럼 계속 먹으면',
@@ -567,8 +575,12 @@ export const translations = {
       modeLose: '체중 감량',
       modeGain: '체중 증량',
       modeMaintain: '체중 유지',
-      goalsHint: '숫자를 직접 정하기 어렵다면, 체중·프로필을 채운 뒤 추천받기를 누르세요. 이후에도 손으로 조정할 수 있습니다.',
+      goalsHint:
+        '숫자를 직접 정하기 어렵다면, 체중·프로필을 채운 뒤 추천받기를 누르세요. 적자는 건강 하한·단백질 우선으로 잡고, 이후에도 손으로 조정할 수 있습니다.',
       themeHint: '기본은 다크예요. 라이트는 여기나 헤더 ☀에서 언제든 켤 수 있어요.',
+      healthFloorWarn:
+        '이 칼로리 목표는 앱의 안전 하한(~{n}kcal)보다 낮아요. 더 빠른 감량이 더 건강한 건 아니에요 — 올려 보는 걸 권합니다.',
+      healthNoteLabel: '건강 우선 설계',
     },
     meal: {
       delete: '삭제',

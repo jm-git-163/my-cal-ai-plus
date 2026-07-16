@@ -70,6 +70,11 @@ export interface CoachResult {
   outlook_4w?: string
   outlook_8w?: string
   disclaimer?: string
+  health?: {
+    safe_calorie_floor?: number
+    intake_band?: 'on_target' | 'mild_under' | 'unsafe_under' | 'over' | 'unknown'
+    protein_adequacy?: 'ok' | 'low' | 'critical' | 'unknown'
+  }
   stats?: {
     days_logged: number
     avg_daily_calories: number

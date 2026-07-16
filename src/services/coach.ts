@@ -8,6 +8,10 @@ export async function fetchCoachAdvice(params: {
   name: string
   currentWeightKg?: number
   goalWeightKg?: number
+  sex?: string
+  heightCm?: number
+  age?: number
+  bmr?: number
 }): Promise<CoachResult> {
   const res = await fetch('/api/coach', {
     method: 'POST',
@@ -31,6 +35,10 @@ export async function fetchCoachAdvice(params: {
       },
       currentWeightKg: params.currentWeightKg,
       goalWeightKg: params.goalWeightKg,
+      sex: params.sex,
+      heightCm: params.heightCm,
+      age: params.age,
+      bmr: params.bmr,
       locale: params.locale,
       name: params.name,
     }),

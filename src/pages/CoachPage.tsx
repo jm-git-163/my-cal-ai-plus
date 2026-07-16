@@ -8,6 +8,7 @@ import { fetchCoachAdvice } from '@/services/coach'
 import { fetchMealRecommendations } from '@/services/recommend'
 import { useAppStore } from '@/store/useAppStore'
 import { sumNutrition, todayMeals } from '@/utils/nutrition'
+import { estimateBmr } from '@/utils/recommendGoals'
 
 function directionLabel(
   t: ReturnType<typeof useI18n>['t'],
@@ -90,6 +91,15 @@ export function CoachPage() {
         name: settings.name,
         currentWeightKg: settings.currentWeightKg,
         goalWeightKg: settings.goalWeightKg,
+        sex: settings.sex,
+        heightCm: settings.heightCm,
+        age: settings.age,
+        bmr: estimateBmr(
+          settings.currentWeightKg || 70,
+          settings.heightCm,
+          settings.age,
+          settings.sex,
+        ),
       })
       setCoach(result)
       setResultLocale(locale)
@@ -288,6 +298,11 @@ export function CoachPage() {
                 bandLabel={bandLabelFor(t, coach.score)}
                 hint={t.coach.scoreHint}
               />
+              {coach.health?.intake_band === 'unsafe_under' && (
+                <p className="rounded-2xl border border-brand-orange/30 bg-brand-orange-soft/50 px-4 py-3 text-sm leading-relaxed text-brand-ink dark:bg-brand-orange/15 dark:text-white/85">
+                  {t.coach.healthUnsafe}
+                </p>
+              )}
               {coach.predicted_goal_note && (
                 <p className="text-balance-ko rounded-2xl bg-black/[0.03] px-4 py-3 text-sm leading-relaxed text-brand-muted dark:bg-white/5 dark:text-white/55">
                   {coach.predicted_goal_note}
