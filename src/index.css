@@ -259,11 +259,6 @@ html.dark body {
   box-shadow: 0 6px 16px rgba(47, 111, 237, 0.35);
 }
 
-.coach-wait__orb--card .coach-wait__core {
-  background: linear-gradient(145deg, #f0a04b, #e88b2e);
-  box-shadow: 0 6px 16px rgba(232, 139, 46, 0.35);
-}
-
 .coach-wait__ring {
   position: absolute;
   inset: 0;
@@ -274,10 +269,6 @@ html.dark body {
 
 .coach-wait__orb--coach .coach-wait__ring {
   border-color: rgba(47, 111, 237, 0.35);
-}
-
-.coach-wait__orb--card .coach-wait__ring {
-  border-color: rgba(232, 139, 46, 0.4);
 }
 
 .coach-wait__spark {

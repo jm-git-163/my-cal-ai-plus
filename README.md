@@ -68,7 +68,6 @@ Set environment variables in the Vercel project dashboard (or CLI):
   - MIME validation, client resize for GPT-5.6 token control
   - Multi-item plate detection, visible text, portion uncertainty notes
 - AI Coach with Structured Outputs (`/api/coach`)
-- Share card Image Generation (`/api/image`)
 - Default model: `gpt-5.6` (override with `OPENAI_MODEL`)
 
 ## Spec

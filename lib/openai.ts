@@ -33,7 +33,3 @@ export function getFastReasoningEffort(): 'minimal' | 'low' | 'medium' | 'high' 
   if (raw === 'low' || raw === 'medium' || raw === 'high') return raw
   return 'minimal'
 }
-
-export function getImageModel() {
-  return process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1'
-}

@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { CoachResult, MealRecommendResult } from '@/types'
 import { CoachWaitPanel } from '@/components/CoachWaitPanel'
 import { ScoreGauge, scoreBandKey } from '@/components/ScoreGauge'
 import { tReplace } from '@/i18n/translations'
 import { useI18n } from '@/hooks/useI18n'
-import { fetchCoachAdvice, generateShareCard, SHARE_CARD_DESIGN } from '@/services/coach'
+import { fetchCoachAdvice } from '@/services/coach'
 import { fetchMealRecommendations } from '@/services/recommend'
 import { useAppStore } from '@/store/useAppStore'
 import { sumNutrition, todayMeals } from '@/utils/nutrition'
@@ -57,14 +57,11 @@ export function CoachPage() {
 
   const [loading, setLoading] = useState(false)
   const [recommendLoading, setRecommendLoading] = useState(false)
-  const [cardLoading, setCardLoading] = useState(false)
   const [coach, setCoach] = useState<CoachResult | null>(null)
   const [recommend, setRecommend] = useState<MealRecommendResult | null>(null)
-  const [cardUrl, setCardUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [staleLocale, setStaleLocale] = useState(false)
   const [resultLocale, setResultLocale] = useState<typeof locale | null>(null)
-  const cardWaitRef = useRef<HTMLDivElement | null>(null)
 
   const todayTotals = useMemo(() => sumNutrition(todayMeals(meals)), [meals])
   const remaining = useMemo(
@@ -81,21 +78,6 @@ export function CoachPage() {
     }
   }, [locale, resultLocale])
 
-  useEffect(() => {
-    if (!cardLoading) return
-    cardWaitRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [cardLoading])
-
-  // Drop stale previews when share-card layout version changes (after deploys).
-  useEffect(() => {
-    const key = 'calai_share_card_design'
-    const prev = sessionStorage.getItem(key)
-    if (prev !== String(SHARE_CARD_DESIGN)) {
-      setCardUrl(null)
-      sessionStorage.setItem(key, String(SHARE_CARD_DESIGN))
-    }
-  }, [])
-
   async function runCoach() {
     setLoading(true)
     setError(null)
@@ -111,7 +93,6 @@ export function CoachPage() {
       })
       setCoach(result)
       setResultLocale(locale)
-      setCardUrl(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : t.coach.error)
     } finally {
@@ -136,31 +117,6 @@ export function CoachPage() {
       setError(err instanceof Error ? err.message : t.coach.whatToEatError)
     } finally {
       setRecommendLoading(false)
-    }
-  }
-
-  async function runShareCard() {
-    if (!coach) return
-    setCardLoading(true)
-    setCardUrl(null)
-    setError(null)
-    const started = Date.now()
-    try {
-      const image = await generateShareCard({
-        headline: coach.summary,
-        subtitle: [coach.weight_trend?.estimate_4w, coach.advice].filter(Boolean).join(' · '),
-        score: coach.score,
-        locale,
-      })
-      // Keep the wait panel visible briefly so it doesn’t flash and feel broken.
-      const minMs = 900
-      const wait = Math.max(0, minMs - (Date.now() - started))
-      if (wait > 0) await new Promise((r) => window.setTimeout(r, wait))
-      setCardUrl(image)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t.coach.error)
-    } finally {
-      setCardLoading(false)
     }
   }
 
@@ -193,20 +149,7 @@ export function CoachPage() {
         <button type="button" className="btn-secondary" disabled={loading} onClick={() => void runCoach()}>
           {loading ? t.coach.loading : t.coach.refresh}
         </button>
-        {coach && (
-          <button
-            type="button"
-            className="btn-secondary"
-            disabled={cardLoading}
-            onClick={() => void runShareCard()}
-          >
-            {cardLoading ? t.coach.generatingCard : t.coach.shareCard}
-          </button>
-        )}
       </div>
-      {coach && !cardUrl && !cardLoading && (
-        <p className="text-xs text-brand-muted dark:text-white/45">{t.coach.cardRegenHint}</p>
-      )}
 
       <div className="rounded-2xl bg-brand-green-soft/70 px-4 py-3 text-sm text-brand-ink dark:bg-brand-green/15 dark:text-white/80">
         {tReplace(t.dashboard.remaining, { n: String(Math.max(0, remaining.calories)) })}
@@ -248,21 +191,6 @@ export function CoachPage() {
           hint={t.coach.waitHint}
           tipLabel={t.coach.tipLabel}
         />
-      )}
-
-      {cardLoading && (
-        <div ref={cardWaitRef}>
-          <CoachWaitPanel
-            mode="card"
-            title={t.coach.waitTitleCard}
-            stages={t.coach.waitStagesCard}
-            tips={t.coach.waitTips}
-            almost={t.coach.waitAlmost}
-            hint={t.coach.waitHintCard}
-            tipLabel={t.coach.tipLabel}
-            almostAfterSec={3}
-          />
-        </div>
       )}
 
       {recommend && !recommendLoading && (
@@ -506,20 +434,6 @@ export function CoachPage() {
           {coach.disclaimer && (
             <p className="px-1 text-xs text-brand-muted dark:text-white/45">{coach.disclaimer}</p>
           )}
-        </div>
-      )}
-
-      {cardUrl && !cardLoading && (
-        <div className="glass-card space-y-3 p-5">
-          <p className="text-sm font-semibold text-brand-ink dark:text-white">{t.coach.cardReady}</p>
-          <img
-            src={cardUrl}
-            alt="Share card"
-            className="mx-auto aspect-square max-h-[min(70vh,420px)] w-auto max-w-full rounded-2xl shadow-soft"
-          />
-          <a href={cardUrl} download="my-cal-ai-plus-card.png" className="btn-secondary inline-flex">
-            {t.coach.download}
-          </a>
         </div>
       )}
     </div>

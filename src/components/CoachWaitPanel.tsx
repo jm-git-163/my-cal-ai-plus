@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-type Mode = 'recommend' | 'coach' | 'card'
+type Mode = 'recommend' | 'coach'
 
 interface CoachWaitPanelProps {
   mode: Mode
