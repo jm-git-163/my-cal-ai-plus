@@ -117,8 +117,9 @@ export function CoachPage() {
     setError(null)
     try {
       const image = await generateShareCard({
-        headline: coach.summary.slice(0, 60),
-        subtitle: (coach.weight_trend?.estimate_4w || coach.advice).slice(0, 80),
+        headline: coach.summary,
+        subtitle: [coach.weight_trend?.estimate_4w, coach.advice].filter(Boolean).join(' · '),
+        score: coach.score,
         locale,
       })
       setCardUrl(image)

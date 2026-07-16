@@ -1,5 +1,6 @@
 import type { CoachResult, DailyGoals, MealEntry } from '@/types'
 import type { Locale } from '@/i18n/translations'
+import { clipShareText, renderShareCard } from '@/utils/shareCard'
 
 export async function fetchCoachAdvice(params: {
   meals: MealEntry[]
@@ -44,21 +45,17 @@ export async function fetchCoachAdvice(params: {
   return data as CoachResult
 }
 
+/** Canvas card — exact coach copy, no AI misspellings or mid-sentence cuts. */
 export async function generateShareCard(params: {
   headline: string
   subtitle: string
   locale: Locale
+  score?: number
 }): Promise<string> {
-  const res = await fetch('/api/image', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
+  return renderShareCard({
+    headline: clipShareText(params.headline, 72),
+    subtitle: clipShareText(params.subtitle, 110),
+    score: params.score,
+    locale: params.locale,
   })
-
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    throw new Error((data as { error?: string }).error || `Image API error (${res.status})`)
-  }
-
-  return (data as { image: string }).image
 }
