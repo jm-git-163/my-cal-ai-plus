@@ -44,13 +44,14 @@ export function CoachWaitPanel({
   useEffect(() => {
     if (tips.length < 2) return
     let fadeTimer: number | undefined
+    // Slow enough to read a full tip (~1–2 sentences).
     const rotate = window.setInterval(() => {
       setTipVisible(false)
       fadeTimer = window.setTimeout(() => {
         setTipIndex((i) => (i + 1) % tips.length)
         setTipVisible(true)
-      }, 220)
-    }, 3200)
+      }, 320)
+    }, 8000)
     return () => {
       window.clearInterval(rotate)
       if (fadeTimer) window.clearTimeout(fadeTimer)
