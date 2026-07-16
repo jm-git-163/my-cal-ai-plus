@@ -61,7 +61,6 @@ export interface CoachResult {
   summary: string
   advice: string
   focus: string[]
-  score: number
   predicted_goal_note: string
   weight_trend?: CoachTrendBlock
   muscle_trend?: CoachTrendBlock
@@ -83,6 +82,7 @@ export interface CoachResult {
     avg_daily_fat: number
     complete_days?: number
     projected_daily_calories?: number | null
+    projected_daily_protein?: number | null
     confidence?: 'low' | 'medium' | 'high'
     projection_usable?: boolean
     incomplete_logging?: boolean

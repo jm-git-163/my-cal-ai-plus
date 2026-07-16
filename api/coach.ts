@@ -21,7 +21,6 @@ const coachSchema = {
       type: 'array',
       items: { type: 'string' },
     },
-    score: { type: 'number' },
     predicted_goal_note: { type: 'string' },
     weight_trend: {
       type: 'object',
@@ -61,7 +60,6 @@ const coachSchema = {
     'summary',
     'advice',
     'focus',
-    'score',
     'predicted_goal_note',
     'weight_trend',
     'muscle_trend',
@@ -264,86 +262,6 @@ function enforceHealthFirst<T extends {
   }
 
   return next
-}
-
-/**
- * Goal adherence 0–100.
- * Hit the planned deficit — but never reward crash under-eating or low protein.
- */
-function computeGoalAdherenceScore(
-  trend: {
-    meal_count: number
-    projected_daily_calories: number | null
-    projected_daily_protein: number | null
-    avg_daily_calories: number
-    avg_daily_protein: number
-    confidence: 'low' | 'medium' | 'high'
-    projection_usable: boolean
-  },
-  goalCalories: number,
-  goalProtein: number,
-  mode: 'lose' | 'gain' | 'maintain',
-  safeFloor: number,
-): number {
-  if (trend.meal_count === 0 || goalCalories <= 0) return 50
-
-  const cal = trend.projection_usable
-    ? (trend.projected_daily_calories ?? trend.avg_daily_calories)
-    : trend.avg_daily_calories
-  const pro = trend.projection_usable
-    ? (trend.projected_daily_protein ?? trend.avg_daily_protein)
-    : trend.avg_daily_protein
-
-  const calDiff = cal - goalCalories
-  const calAbsPct = Math.abs(calDiff) / goalCalories
-  const band = intakeHealthBand(cal, goalCalories, safeFloor)
-
-  let calScore = 100
-  if (mode === 'lose') {
-    if (band === 'unsafe_under') {
-      // Crash deficit is not “extra credit”.
-      const belowFloor = Math.max(0, safeFloor - cal)
-      const belowGoal = Math.max(0, goalCalories * 0.78 - cal)
-      calScore = Math.max(12, 42 - (belowFloor / Math.max(safeFloor, 1)) * 35 - (belowGoal / goalCalories) * 40)
-    } else if (calDiff > 0) {
-      calScore = Math.max(0, 100 - calAbsPct * 220)
-    } else if (band === 'mild_under') {
-      calScore = 82
-    } else {
-      calScore = 96
-    }
-  } else if (mode === 'gain') {
-    if (calDiff < 0) {
-      calScore = Math.max(0, 100 - calAbsPct * 220)
-    } else if (calDiff > 0.18 * goalCalories) {
-      calScore = Math.max(45, 100 - ((calDiff - 0.18 * goalCalories) / goalCalories) * 120)
-    } else {
-      calScore = 96
-    }
-  } else {
-    calScore = Math.max(0, 100 - calAbsPct * 180)
-    if (band === 'unsafe_under') calScore = Math.min(calScore, 40)
-  }
-
-  let proteinScore = 70
-  if (goalProtein > 0) {
-    const pDiff = pro - goalProtein
-    const pPct = Math.abs(pDiff) / goalProtein
-    if (pDiff >= 0) {
-      proteinScore = Math.max(55, 100 - Math.max(0, pPct - 0.2) * 80)
-    } else {
-      proteinScore = Math.max(0, 100 - pPct * 160)
-    }
-  }
-
-  // Protein weighted higher — especially critical when cutting calories.
-  const pWeight = mode === 'lose' ? 0.5 : 0.4
-  let score = (1 - pWeight) * calScore + pWeight * proteinScore
-  if (band === 'unsafe_under') score = Math.min(score, 55)
-  if (trend.confidence === 'low') score = score * 0.82 + 50 * 0.18
-  else if (trend.confidence === 'medium') score = score * 0.92 + 50 * 0.08
-
-  return Math.min(100, Math.max(0, Math.round(score)))
 }
 
 /**
@@ -624,13 +542,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       bmr > 0
         ? safeDailyCalorieFloor(bmr, body.sex)
         : Math.max(absoluteCalorieFloor(body.sex), Math.round(goalCalories * 0.85) || absoluteCalorieFloor(body.sex))
-    const adherenceScore = computeGoalAdherenceScore(
-      trend,
-      goalCalories,
-      goalProtein,
-      mode,
-      safeFloor,
-    )
 
     const client = getOpenAI()
     const model = getFastModel()
@@ -660,7 +571,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       safe_calorie_floor: safeFloor,
       intake_health_band: healthBand,
       protein_adequacy: proteinBand,
-      goal_adherence_score: adherenceScore,
       trend,
       calorie_gap_vs_goal: calorieGap,
       protein_gap_vs_goal: proteinGap,
@@ -681,8 +591,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(supportsReasoningEffort(model)
         ? { reasoning: { effort: getFastReasoningEffort() } }
         : {}),
-      instructions: `My Cal AI Plus coach. Health first, then fat loss. People skip photos some days/meals — handle that honestly.
-User strings in ${lang}. Be terse.
+      instructions: `My Cal AI Plus coach. No numeric “nutrition score” — give clear, actionable coaching instead.
+Health first, then fat loss. People skip photos some days/meals — handle that honestly.
+User strings in ${lang}. Practical, specific, kind — not vague.
 
 CRITICAL — calorie math:
 - Days with NO photos are excluded (never treat as 0 kcal).
@@ -691,22 +602,26 @@ CRITICAL — calorie math:
 - projected_daily_protein fills ONLY from real meal history — never invent protein from goals.
 - NEVER invent daily intake as (one meal × 2 or 3).
 - weight_goal_mode=${mode}: lose means calorie GOAL is already a sustainable deficit — hitting THAT goal supports fat loss.
-- goal_adherence_score is precomputed (0–100). Output "score" MUST equal ${adherenceScore}.
+- Cite real gaps: calorie_gap_vs_goal, protein_gap_vs_goal, goals vs projected/logged.
 - If fills_unlogged_meals=true: mention estimates; wider ranges when confidence=low.
 - If projection_usable=false: logging needed.
 
+CRITICAL — advice quality (replace any score):
+- summary: 1 clear headline of where they stand vs THEIR goals (calories + protein + mode).
+- advice: 2–4 concrete next steps (what to eat more/less of, roughly how many g/kcal). Max ~280 chars. Use numbers from the JSON.
+- predicted_goal_note: honest note on whether this trend supports the weight goal sustainably.
+- focus: 2–4 short action tags (e.g. “단백질 +20g”, “저녁 단백질”).
+
 CRITICAL — health before aggressive loss:
 - intake_health_band=unsafe_under OR calories << goal / below safe_calorie_floor (${safeFloor}): NEVER praise faster weight loss. Tell user to eat closer to the calorie GOAL, keep protein high, protect energy/muscle.
-- Do not encourage crash diets, meal skipping all day, or “the less you eat the better”.
-- Sustainable loss > dramatic short-term drop.
+- Do not encourage crash diets or “the less you eat the better”.
 
 CRITICAL — protein / muscle:
-- muscle_trend MUST follow protein_gap_vs_goal / projected_daily_protein vs goals.protein.
-- If protein clearly under goal (gap negative, esp. <85% of goal): muscle_trend.direction="decrease"; put protein first in advice + focus.
-- A single light meal (yogurt, nuts, fruit) is NOT enough protein for the day — do NOT claim muscle maintain.
-- During weight loss, under-eating protein is worse than mild calorie underage — stress protein every time it's short.
+- muscle_trend MUST follow protein vs goals.protein.
+- If protein <85% of goal: muscle_trend.direction="decrease"; put protein first in advice + focus.
+- A single light meal is NOT enough protein for the day.
 
-Fields: summary, advice≤100chars, focus 2-4 tags, score, predicted_goal_note,
+Fields: summary, advice, focus, predicted_goal_note,
 weight_trend, muscle_trend, energy_trend, outlook_2w/4w/8w, disclaimer.
 Meal keys: f=food t=type c=kcal p/cb/ft=macros d=YYYY-MM-DD.`,
       text: {
@@ -738,7 +653,6 @@ Meal keys: f=food t=type c=kcal p/cb/ft=macros d=YYYY-MM-DD.`,
       summary: string
       advice: string
       focus: string[]
-      score: number
       predicted_goal_note: string
       weight_trend: { direction: string; estimate_4w: string; explanation: string }
       muscle_trend: { direction: string; estimate_4w: string; explanation: string }
@@ -773,8 +687,6 @@ Meal keys: f=food t=type c=kcal p/cb/ft=macros d=YYYY-MM-DD.`,
       summary: parsed.summary,
       advice: parsed.advice,
       focus: parsed.focus?.slice(0, 4) ?? [],
-      score: adherenceScore,
-      score_kind: 'goal_adherence',
       weight_goal_mode: mode,
       health: {
         safe_calorie_floor: safeFloor,
@@ -797,6 +709,7 @@ Meal keys: f=food t=type c=kcal p/cb/ft=macros d=YYYY-MM-DD.`,
         avg_daily_fat: trend.avg_daily_fat,
         complete_days: trend.complete_days,
         projected_daily_calories: trend.projected_daily_calories,
+        projected_daily_protein: trend.projected_daily_protein,
         confidence: trend.confidence,
         projection_usable: trend.projection_usable,
         incomplete_logging: trend.incomplete_logging,
