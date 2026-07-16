@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-type Mode = 'recommend' | 'coach'
+type Mode = 'recommend' | 'coach' | 'card'
 
 interface CoachWaitPanelProps {
   mode: Mode
@@ -10,6 +10,8 @@ interface CoachWaitPanelProps {
   almost: string
   hint: string
   tipLabel: string
+  /** Seconds before switching stage copy to “almost”. Default 6. */
+  almostAfterSec?: number
 }
 
 export function CoachWaitPanel({
@@ -20,6 +22,7 @@ export function CoachWaitPanel({
   almost,
   hint,
   tipLabel,
+  almostAfterSec = 6,
 }: CoachWaitPanelProps) {
   const [tipIndex, setTipIndex] = useState(() => Math.floor(Math.random() * Math.max(tips.length, 1)))
   const [stageIndex, setStageIndex] = useState(0)
@@ -31,10 +34,10 @@ export function CoachWaitPanel({
     const tick = window.setInterval(() => {
       const sec = Math.floor((Date.now() - started) / 1000)
       setElapsedSec(sec)
-      if (sec < 2) setStageIndex(0)
-      else if (sec < 5) setStageIndex(Math.min(1, stages.length - 1))
+      if (sec < 1) setStageIndex(0)
+      else if (sec < 3) setStageIndex(Math.min(1, stages.length - 1))
       else setStageIndex(Math.min(2, stages.length - 1))
-    }, 400)
+    }, 280)
     return () => window.clearInterval(tick)
   }, [stages.length])
 
@@ -56,7 +59,7 @@ export function CoachWaitPanel({
 
   const stage = stages[Math.min(stageIndex, stages.length - 1)] ?? ''
   const tip = tips[tipIndex % Math.max(tips.length, 1)] ?? ''
-  const showAlmost = elapsedSec >= 6
+  const showAlmost = elapsedSec >= almostAfterSec
 
   return (
     <section

@@ -192,8 +192,10 @@ export const translations = {
       kindRest: 'Activity',
       waitTitleRecommend: 'Finding your next move',
       waitTitleCoach: 'Reading your recent meals',
+      waitTitleCard: 'Designing your share card',
       waitAlmost: 'Almost there — wrapping up…',
       waitHint: 'Usually a few seconds. Hang tight.',
+      waitHintCard: 'Fonts & layout — usually under a few seconds.',
       waitStagesRecommend: [
         'Checking today’s calories & protein…',
         'Matching time of day with your goal…',
@@ -203,6 +205,11 @@ export const translations = {
         'Summarizing what you’ve logged…',
         'Comparing intake with your daily goals…',
         'Sketching a gentle 2–8 week outlook…',
+      ],
+      waitStagesCard: [
+        'Pulling your coaching lines…',
+        'Laying out score & typography…',
+        'Rendering a crisp share image…',
       ],
       waitTips: [
         'Protein at each meal steadies hunger better than one huge dinner.',
@@ -465,8 +472,10 @@ export const translations = {
       kindRest: '활동',
       waitTitleRecommend: '지금 할 일 고르는 중',
       waitTitleCoach: '최근 식사를 읽는 중',
+      waitTitleCard: '공유 카드 만드는 중',
       waitAlmost: '거의 다 왔어요 — 마무리 중…',
       waitHint: '보통 몇 초면 끝나요. 조금만 기다려 주세요.',
+      waitHintCard: '글씨·레이아웃 정리 중이에요. 보통 금방 끝나요.',
       waitStagesRecommend: [
         '오늘 칼로리·단백질 확인 중…',
         '시간대와 목표를 맞춰 보는 중…',
@@ -476,6 +485,11 @@ export const translations = {
         '기록한 식사를 정리하는 중…',
         '하루 목표와 비교하는 중…',
         '2~8주 전망을 그리는 중…',
+      ],
+      waitStagesCard: [
+        '코칭 문구 가져오는 중…',
+        '점수·타이포 배치하는 중…',
+        '또렷한 공유 이미지로 그리는 중…',
       ],
       waitTips: [
         '매 끼니 단백질을 넣으면 저녁 폭식을 줄이기 쉬워요.',

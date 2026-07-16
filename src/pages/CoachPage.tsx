@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CoachResult, MealRecommendResult } from '@/types'
 import { CoachWaitPanel } from '@/components/CoachWaitPanel'
 import { tReplace } from '@/i18n/translations'
@@ -52,6 +52,7 @@ export function CoachPage() {
   const [error, setError] = useState<string | null>(null)
   const [staleLocale, setStaleLocale] = useState(false)
   const [resultLocale, setResultLocale] = useState<typeof locale | null>(null)
+  const cardWaitRef = useRef<HTMLDivElement | null>(null)
 
   const todayTotals = useMemo(() => sumNutrition(todayMeals(meals)), [meals])
   const remaining = useMemo(
@@ -67,6 +68,11 @@ export function CoachPage() {
       setStaleLocale(true)
     }
   }, [locale, resultLocale])
+
+  useEffect(() => {
+    if (!cardLoading) return
+    cardWaitRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [cardLoading])
 
   async function runCoach() {
     setLoading(true)
@@ -114,7 +120,9 @@ export function CoachPage() {
   async function runShareCard() {
     if (!coach) return
     setCardLoading(true)
+    setCardUrl(null)
     setError(null)
+    const started = Date.now()
     try {
       const image = await generateShareCard({
         headline: coach.summary,
@@ -122,6 +130,10 @@ export function CoachPage() {
         score: coach.score,
         locale,
       })
+      // Keep the wait panel visible briefly so it doesn’t flash and feel broken.
+      const minMs = 900
+      const wait = Math.max(0, minMs - (Date.now() - started))
+      if (wait > 0) await new Promise((r) => window.setTimeout(r, wait))
       setCardUrl(image)
     } catch (err) {
       setError(err instanceof Error ? err.message : t.coach.error)
@@ -211,6 +223,21 @@ export function CoachPage() {
           hint={t.coach.waitHint}
           tipLabel={t.coach.tipLabel}
         />
+      )}
+
+      {cardLoading && (
+        <div ref={cardWaitRef}>
+          <CoachWaitPanel
+            mode="card"
+            title={t.coach.waitTitleCard}
+            stages={t.coach.waitStagesCard}
+            tips={t.coach.waitTips}
+            almost={t.coach.waitAlmost}
+            hint={t.coach.waitHintCard}
+            tipLabel={t.coach.tipLabel}
+            almostAfterSec={3}
+          />
+        </div>
       )}
 
       {recommend && !recommendLoading && (
@@ -455,7 +482,7 @@ export function CoachPage() {
         </div>
       )}
 
-      {cardUrl && (
+      {cardUrl && !cardLoading && (
         <div className="glass-card space-y-3 p-5">
           <p className="text-sm font-semibold text-brand-ink dark:text-white">{t.coach.cardReady}</p>
           <img
