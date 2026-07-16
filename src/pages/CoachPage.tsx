@@ -286,6 +286,7 @@ export function CoachPage() {
                 label={t.coach.score}
                 outOfLabel={tReplace(t.coach.scoreOutOf, { n: String(Math.round(coach.score)) })}
                 bandLabel={bandLabelFor(t, coach.score)}
+                hint={t.coach.scoreHint}
               />
               {coach.predicted_goal_note && (
                 <p className="text-balance-ko rounded-2xl bg-black/[0.03] px-4 py-3 text-sm leading-relaxed text-brand-muted dark:bg-white/5 dark:text-white/55">

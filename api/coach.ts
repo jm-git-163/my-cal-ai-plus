@@ -113,9 +113,82 @@ function isDayComplete(day: DayBucket, goalCalories: number): boolean {
   return false
 }
 
-function avg(nums: number[]) {
-  if (nums.length === 0) return 0
-  return nums.reduce((a, b) => a + b, 0) / nums.length
+function weightMode(current?: number, goal?: number): 'lose' | 'gain' | 'maintain' {
+  if (!current || !goal) return 'maintain'
+  const diff = goal - current
+  if (diff < -0.5) return 'lose'
+  if (diff > 0.5) return 'gain'
+  return 'maintain'
+}
+
+/**
+ * Goal adherence 0–100 (NOT “eat more = better”).
+ * For weight-loss goals, scoring high means staying near the deficit calorie target.
+ */
+function computeGoalAdherenceScore(
+  trend: {
+    meal_count: number
+    projected_daily_calories: number | null
+    projected_daily_protein: number | null
+    avg_daily_calories: number
+    avg_daily_protein: number
+    confidence: 'low' | 'medium' | 'high'
+    projection_usable: boolean
+  },
+  goalCalories: number,
+  goalProtein: number,
+  mode: 'lose' | 'gain' | 'maintain',
+): number {
+  if (trend.meal_count === 0 || goalCalories <= 0) return 50
+
+  const cal = trend.projection_usable
+    ? (trend.projected_daily_calories ?? trend.avg_daily_calories)
+    : trend.avg_daily_calories
+  const pro = trend.projection_usable
+    ? (trend.projected_daily_protein ?? trend.avg_daily_protein)
+    : trend.avg_daily_protein
+
+  const calDiff = cal - goalCalories
+  const calAbsPct = Math.abs(calDiff) / goalCalories
+
+  let calScore = 100
+  if (mode === 'lose') {
+    // Over target hurts a lot; mild under is fine; extreme under mildly penalized.
+    if (calDiff > 0) {
+      calScore = Math.max(0, 100 - calAbsPct * 220)
+    } else if (calDiff < -0.18 * goalCalories) {
+      calScore = Math.max(45, 100 - ((-calDiff - 0.18 * goalCalories) / goalCalories) * 120)
+    } else {
+      calScore = 96
+    }
+  } else if (mode === 'gain') {
+    if (calDiff < 0) {
+      calScore = Math.max(0, 100 - calAbsPct * 220)
+    } else if (calDiff > 0.18 * goalCalories) {
+      calScore = Math.max(45, 100 - ((calDiff - 0.18 * goalCalories) / goalCalories) * 120)
+    } else {
+      calScore = 96
+    }
+  } else {
+    calScore = Math.max(0, 100 - calAbsPct * 180)
+  }
+
+  let proteinScore = 70
+  if (goalProtein > 0) {
+    const pDiff = pro - goalProtein
+    const pPct = Math.abs(pDiff) / goalProtein
+    if (pDiff >= 0) {
+      proteinScore = Math.max(55, 100 - Math.max(0, pPct - 0.2) * 80)
+    } else {
+      proteinScore = Math.max(0, 100 - pPct * 160)
+    }
+  }
+
+  let score = 0.62 * calScore + 0.38 * proteinScore
+  if (trend.confidence === 'low') score = score * 0.82 + 50 * 0.18
+  else if (trend.confidence === 'medium') score = score * 0.92 + 50 * 0.08
+
+  return Math.min(100, Math.max(0, Math.round(score)))
 }
 
 /**
@@ -384,6 +457,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const trend = buildTrendStats(meals, goalCalories, goalProtein)
     const currentWeightKg = body.currentWeightKg
     const goalWeightKg = body.goalWeightKg
+    const mode = weightMode(currentWeightKg, goalWeightKg)
+    const adherenceScore = computeGoalAdherenceScore(trend, goalCalories, goalProtein, mode)
 
     const client = getOpenAI()
     const model = getFastModel()
@@ -400,8 +475,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const payload = {
       name,
       goals,
+      weight_goal_mode: mode,
       currentWeightKg: currentWeightKg ?? null,
       goalWeightKg: goalWeightKg ?? null,
+      goal_adherence_score: adherenceScore,
       trend,
       calorie_gap_vs_goal: calorieGap,
       protein_gap_vs_goal: proteinGap,
@@ -426,15 +503,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 User strings in ${lang}. Be terse.
 
 CRITICAL — calorie math:
-- Days with NO photos are excluded (never treat as 0 kcal binge/fast day).
-- avg_daily_calories = logged-only totals (can be just breakfast). NEVER use this alone for weight kg forecasts.
-- projected_daily_calories already fills missing meal slots from slot history or goal shares. USE THIS for weight (~7700 kcal ≈ 1 kg) when projection_usable=true.
+- Days with NO photos are excluded (never treat as 0 kcal).
+- avg_daily_calories = logged-only. NEVER use alone for kg forecasts.
+- projected_daily_calories fills missing slots from history/goal shares. USE THIS for weight (~7700 kcal ≈ 1 kg) when projection_usable=true.
 - NEVER invent daily intake as (one meal × 2 or 3).
-- If fills_unlogged_meals=true: say outlook includes estimates for unlogged meals; use WIDER ranges when confidence=low.
-- If confidence=low: still allow a cautious outlook using projected_daily_calories, but avoid dramatic kg claims; prefer maintain / small ranges.
-- If projection_usable=false (no meals): say logging is needed.
-- Score: judge logged meals; don’t punish hard for unlogged days.
-- Mention briefly that skipped-photo days/meals are normal and estimated.
+- weight_goal_mode=${mode}: lose means user's calorie GOAL is already a deficit target — hitting that goal supports fat loss.
+- goal_adherence_score is precomputed (0–100): how close intake is to THEIR goals. For lose, high score = near deficit target (NOT “eat maintenance”). Echo this meaning; do not imply 100 = no weight loss.
+- Output field "score" MUST equal goal_adherence_score (${adherenceScore}).
+- If fills_unlogged_meals=true: mention estimates for unlogged meals; wider ranges when confidence=low.
+- If projection_usable=false: logging needed.
 
 Fields: summary, advice≤100chars, focus 2-4 tags, score, predicted_goal_note,
 weight_trend, muscle_trend, energy_trend, outlook_2w/4w/8w, disclaimer.
@@ -487,7 +564,9 @@ Meal keys: f=food t=type c=kcal p/cb/ft=macros d=YYYY-MM-DD.`,
       summary: parsed.summary,
       advice: parsed.advice,
       focus: parsed.focus?.slice(0, 4) ?? [],
-      score: Math.min(100, Math.max(0, Math.round(parsed.score))),
+      score: adherenceScore,
+      score_kind: 'goal_adherence',
+      weight_goal_mode: mode,
       predicted_goal_note: parsed.predicted_goal_note,
       weight_trend: parsed.weight_trend,
       muscle_trend: parsed.muscle_trend,

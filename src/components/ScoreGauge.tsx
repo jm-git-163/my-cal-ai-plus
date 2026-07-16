@@ -3,6 +3,7 @@ interface ScoreGaugeProps {
   label: string
   outOfLabel: string
   bandLabel: string
+  hint?: string
   size?: number
 }
 
@@ -14,7 +15,7 @@ function scoreAccent(score: number): string {
 }
 
 /** Circular gauge: makes “n out of 100” obvious at a glance. */
-export function ScoreGauge({ score, label, outOfLabel, bandLabel, size = 132 }: ScoreGaugeProps) {
+export function ScoreGauge({ score, label, outOfLabel, bandLabel, hint, size = 132 }: ScoreGaugeProps) {
   const value = Math.min(100, Math.max(0, Math.round(score)))
   const accent = scoreAccent(value)
   const soft =
@@ -69,6 +70,9 @@ export function ScoreGauge({ score, label, outOfLabel, bandLabel, size = 132 }: 
             style={{ width: `${value}%`, backgroundColor: accent }}
           />
         </div>
+        {hint && (
+          <p className="text-xs leading-relaxed text-brand-muted text-balance-ko dark:text-white/50">{hint}</p>
+        )}
       </div>
     </div>
   )
