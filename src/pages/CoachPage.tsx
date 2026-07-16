@@ -458,7 +458,11 @@ export function CoachPage() {
       {cardUrl && (
         <div className="glass-card space-y-3 p-5">
           <p className="text-sm font-semibold text-brand-ink dark:text-white">{t.coach.cardReady}</p>
-          <img src={cardUrl} alt="Share card" className="mx-auto max-h-[480px] rounded-2xl" />
+          <img
+            src={cardUrl}
+            alt="Share card"
+            className="mx-auto max-h-[min(72vh,640px)] w-auto max-w-full rounded-2xl shadow-soft"
+          />
           <a href={cardUrl} download="my-cal-ai-plus-card.png" className="btn-secondary inline-flex">
             {t.coach.download}
           </a>
