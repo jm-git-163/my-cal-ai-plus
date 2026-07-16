@@ -179,10 +179,131 @@ html.dark body {
   }
 }
 
+@keyframes coach-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes coach-bob {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes coach-spark {
+  0% {
+    transform: rotate(0deg) translateX(22px) scale(0.85);
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(360deg) translateX(22px) scale(1);
+    opacity: 0.55;
+  }
+}
+
+@keyframes coach-shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+.coach-wait__orb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  flex-shrink: 0;
+}
+
+.coach-wait__core {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 9999px;
+  background: linear-gradient(145deg, #2db87a, #1d8f5c);
+  box-shadow: 0 6px 16px rgba(34, 160, 107, 0.35);
+  animation: coach-bob 1.4s ease-in-out infinite;
+  z-index: 1;
+}
+
+.coach-wait__orb--coach .coach-wait__core {
+  background: linear-gradient(145deg, #3b82f6, #1d4ed8);
+  box-shadow: 0 6px 16px rgba(47, 111, 237, 0.35);
+}
+
+.coach-wait__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px dashed rgba(34, 160, 107, 0.35);
+  animation: coach-spin 4.5s linear infinite;
+}
+
+.coach-wait__orb--coach .coach-wait__ring {
+  border-color: rgba(47, 111, 237, 0.35);
+}
+
+.coach-wait__spark {
+  position: absolute;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 9999px;
+  background: #e88b2e;
+  animation: coach-spark 2.4s linear infinite;
+}
+
+.coach-wait__spark--b {
+  background: #22a06b;
+  animation-duration: 3.1s;
+  animation-delay: -0.8s;
+}
+
+.coach-wait__spark--c {
+  background: #2f6fed;
+  animation-duration: 2.7s;
+  animation-delay: -1.4s;
+}
+
+.coach-wait__bar {
+  position: relative;
+  height: 0.35rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgba(34, 160, 107, 0.12);
+}
+
+html.dark .coach-wait__bar {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.coach-wait__bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, #22a06b, transparent);
+  animation: coach-shimmer 1.35s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-enter,
   .scan-pulse,
-  .light-atmosphere__blob {
+  .light-atmosphere__blob,
+  .coach-wait__core,
+  .coach-wait__ring,
+  .coach-wait__spark,
+  .coach-wait__bar-fill {
     animation: none;
   }
 }

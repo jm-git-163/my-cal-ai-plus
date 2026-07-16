@@ -124,7 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? Math.floor(body.localHour)
         : now.getHours()
 
-    const allMeals = Array.isArray(body.meals) ? body.meals.slice(0, 40) : []
+    const allMeals = Array.isArray(body.meals) ? body.meals.slice(0, 24) : []
     const todayMeals = allMeals.filter((m) => isSameDay(m.createdAt, now))
     const goals = {
       calories: Number(body.goals?.calories) || 2000,
@@ -203,14 +203,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         minutes_since_last_meal: minsSince,
         prefer_skip_food: preferSkipFood,
       },
-      recent_meals: todayMeals.slice(0, 8).map((m) => ({
-        food: m.food,
-        mealType: m.mealType,
-        calories: m.calories,
-        protein: m.protein,
-        carbs: m.carbs,
-        fat: m.fat,
-        createdAt: m.createdAt,
+      recent_meals: todayMeals.slice(0, 6).map((m) => ({
+        f: String(m.food || '').slice(0, 40),
+        t: m.mealType,
+        c: Math.round(Number(m.calories) || 0),
+        p: Math.round((Number(m.protein) || 0) * 10) / 10,
+        mins_ago: m.createdAt
+          ? Math.max(0, Math.round((now.getTime() - new Date(m.createdAt).getTime()) / 60000))
+          : null,
       })),
     }
 
@@ -264,7 +264,7 @@ Decision rules (follow strictly):
           schema: recommendSchema,
         },
       },
-      input: `Recommend the next action (eat OR water/activity to wait) from this JSON:\n${JSON.stringify(payload)}`,
+      input: `Next action from JSON (meal keys: f=food t=type c=kcal p=protein):\n${JSON.stringify(payload)}`,
     })
 
     for (const item of response.output) {

@@ -129,7 +129,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       goalWeightKg?: number
     }
 
-    const meals = Array.isArray(body.meals) ? body.meals.slice(0, 20) : []
+    const meals = Array.isArray(body.meals) ? body.meals.slice(0, 14) : []
     const goals = body.goals ?? {}
     const lang = body.locale === 'en' ? 'English' : 'Korean'
     const name = body.name || 'User'
@@ -154,14 +154,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       calorie_gap_vs_goal: calorieGap,
       protein_gap_vs_goal: proteinGap,
       meal_count: meals.length,
+      // Compact meal rows — keep decision quality, cut token waste.
       meals: meals.map((m) => ({
-        food: m.food,
-        mealType: m.mealType,
-        calories: m.calories,
-        protein: m.protein,
-        carbs: m.carbs,
-        fat: m.fat,
-        createdAt: m.createdAt,
+        f: String(m.food || '').slice(0, 48),
+        t: m.mealType,
+        c: Math.round(Number(m.calories) || 0),
+        p: Math.round((Number(m.protein) || 0) * 10) / 10,
+        cb: Math.round((Number(m.carbs) || 0) * 10) / 10,
+        ft: Math.round((Number(m.fat) || 0) * 10) / 10,
+        d: m.createdAt ? m.createdAt.slice(0, 10) : undefined,
       })),
     }
 
@@ -170,27 +171,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(supportsReasoningEffort(model)
         ? { reasoning: { effort: getFastReasoningEffort() } }
         : {}),
-      instructions: `You are My Cal AI Plus fitness & nutrition coach.
-Analyze logged meals vs daily goals and project what happens IF the user continues this eating pattern.
-Be concise — short strings, no fluff.
+      instructions: `My Cal AI Plus coach. Project body trends IF eating continues.
+User strings in ${lang}. Be terse — short fields, no fluff.
 
-Output requirements (all user-facing strings in ${lang}):
-- summary: 1 sentence snapshot
-- advice: ~100 chars actionable tip
+Fields:
+- summary: 1 sentence
+- advice: ≤100 chars, actionable
 - focus: 2-4 short tags
-- score: 0-100 nutrition quality vs goals
-- predicted_goal_note: encouraging progress note
-- weight_trend: direction lose|gain|maintain, estimate_4w (e.g. "-0.8~-1.2 kg / 4 weeks"), explanation
-- muscle_trend: direction increase|decrease|maintain, estimate_4w, explanation
-- energy_trend: direction up|down|stable, explanation
-- outlook_2w / outlook_4w / outlook_8w: concise what-if projections if trend continues
-- disclaimer: short note that this is an estimate, not medical advice
+- score: 0-100 vs goals
+- predicted_goal_note: brief encouragement
+- weight_trend: lose|gain|maintain + estimate_4w + short explanation
+- muscle_trend: increase|decrease|maintain + estimate_4w + short explanation
+- energy_trend: up|down|stable + short explanation
+- outlook_2w/4w/8w: one short sentence each
+- disclaimer: estimate, not medical advice
 
-Rules:
-- Use currentWeightKg vs goalWeightKg and avg calories vs goals for weight bias (~7700 kcal ≈ 1 kg rough heuristic; keep ranges).
-- Use protein vs goals for muscle "capacity" language.
-- If meals empty or days_logged < 2, be conservative.
-- Do NOT claim guaranteed body changes.`,
+Rules: use weight vs goal + avg kcal (~7700kcal≈1kg ranges); protein for muscle capacity; if days_logged<2 stay conservative; no guarantees.
+Meal keys: f=food, t=type, c=kcal, p/cb/ft=macros, d=YYYY-MM-DD.`,
       text: {
         format: {
           type: 'json_schema',
@@ -199,7 +196,7 @@ Rules:
           schema: coachSchema,
         },
       },
-      input: `Coach and project body trends from this JSON:\n${JSON.stringify(payload)}`,
+      input: `Coach from JSON:\n${JSON.stringify(payload)}`,
     })
 
     for (const item of response.output) {

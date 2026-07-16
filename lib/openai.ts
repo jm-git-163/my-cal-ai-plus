@@ -27,10 +27,11 @@ export function supportsReasoningEffort(model: string): boolean {
 }
 
 export function getFastReasoningEffort(): 'minimal' | 'low' | 'medium' | 'high' {
-  const raw = (process.env.OPENAI_FAST_REASONING || 'low').toLowerCase()
+  // Default minimal — coach/recommend stay structured; extra reasoning mostly adds latency.
+  const raw = (process.env.OPENAI_FAST_REASONING || 'minimal').toLowerCase()
   if (raw === 'none' || raw === 'minimal') return 'minimal'
-  if (raw === 'medium' || raw === 'high') return raw
-  return 'low'
+  if (raw === 'low' || raw === 'medium' || raw === 'high') return raw
+  return 'minimal'
 }
 
 export function getImageModel() {

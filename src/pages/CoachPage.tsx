@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CoachResult, MealRecommendResult } from '@/types'
+import { CoachWaitPanel } from '@/components/CoachWaitPanel'
 import { tReplace } from '@/i18n/translations'
 import { useI18n } from '@/hooks/useI18n'
 import { fetchCoachAdvice, generateShareCard } from '@/services/coach'
@@ -187,7 +188,31 @@ export function CoachPage() {
         </div>
       )}
 
-      {recommend && (
+      {recommendLoading && (
+        <CoachWaitPanel
+          mode="recommend"
+          title={t.coach.waitTitleRecommend}
+          stages={t.coach.waitStagesRecommend}
+          tips={t.coach.waitTips}
+          almost={t.coach.waitAlmost}
+          hint={t.coach.waitHint}
+          tipLabel={t.coach.tipLabel}
+        />
+      )}
+
+      {loading && (
+        <CoachWaitPanel
+          mode="coach"
+          title={t.coach.waitTitleCoach}
+          stages={t.coach.waitStagesCoach}
+          tips={t.coach.waitTips}
+          almost={t.coach.waitAlmost}
+          hint={t.coach.waitHint}
+          tipLabel={t.coach.tipLabel}
+        />
+      )}
+
+      {recommend && !recommendLoading && (
         <section className="space-y-3">
           <div className="flex flex-wrap items-end justify-between gap-2">
             <div>
@@ -269,7 +294,7 @@ export function CoachPage() {
         </section>
       )}
 
-      {coach && (
+      {coach && !loading && (
         <div className="space-y-4">
           <div className="glass-card space-y-4 p-5 sm:p-6">
             <div className="flex items-end justify-between gap-3">
