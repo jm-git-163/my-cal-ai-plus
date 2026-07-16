@@ -81,6 +81,9 @@ export interface CoachResult {
     confidence?: 'low' | 'medium' | 'high'
     projection_usable?: boolean
     incomplete_logging?: boolean
+    fills_unlogged_meals?: boolean
+    estimated_fill_kcal_avg?: number
+    projection_basis?: 'complete_days' | 'filled_partial_days' | 'insufficient'
   }
 }
 

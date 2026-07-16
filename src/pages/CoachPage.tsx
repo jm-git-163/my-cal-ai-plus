@@ -319,12 +319,12 @@ export function CoachPage() {
               <div className="space-y-2">
                 {(coach.stats.incomplete_logging ||
                   coach.stats.confidence === 'low' ||
-                  coach.stats.projection_usable === false) && (
+                  coach.stats.fills_unlogged_meals) && (
                   <p className="rounded-2xl border border-brand-orange/25 bg-brand-orange-soft/70 px-4 py-3 text-sm leading-relaxed text-brand-orange dark:border-brand-orange/30 dark:bg-brand-orange/15">
                     {t.coach.confidenceLow}
                   </p>
                 )}
-                {coach.stats.confidence === 'medium' && coach.stats.projection_usable && (
+                {coach.stats.confidence === 'medium' && !coach.stats.incomplete_logging && (
                   <p className="rounded-2xl bg-brand-blue-soft/80 px-4 py-3 text-sm leading-relaxed text-brand-blue dark:bg-brand-blue/15">
                     {tReplace(t.coach.confidenceMedium, {
                       n: String(coach.stats.complete_days ?? coach.stats.days_logged),
@@ -348,10 +348,17 @@ export function CoachPage() {
                     {coach.stats.projection_usable && coach.stats.projected_daily_calories != null
                       ? coach.stats.projected_daily_calories
                       : coach.stats.avg_daily_calories}{' '}
-                    kcal · P{' '}
-                    {coach.stats.avg_daily_protein}g · C {coach.stats.avg_daily_carbs}g · F{' '}
+                    kcal · P {coach.stats.avg_daily_protein}g · C {coach.stats.avg_daily_carbs}g · F{' '}
                     {coach.stats.avg_daily_fat}g
                   </p>
+                  {!!coach.stats.fills_unlogged_meals &&
+                    (coach.stats.estimated_fill_kcal_avg ?? 0) > 0 && (
+                      <p className="mt-1 text-xs text-brand-muted dark:text-white/50">
+                        {tReplace(t.coach.fillNote, {
+                          n: String(Math.round(coach.stats.estimated_fill_kcal_avg ?? 0)),
+                        })}
+                      </p>
+                    )}
                 </div>
               </div>
             )}

@@ -85,6 +85,15 @@ type DayBucket = {
   fat: number
   count: number
   types: Set<string>
+  byType: Record<string, { cal: number; protein: number; count: number }>
+}
+
+const MAIN_SLOTS = ['breakfast', 'lunch', 'dinner'] as const
+/** Typical share of daily goal when a slot has no history yet. */
+const SLOT_GOAL_SHARE: Record<(typeof MAIN_SLOTS)[number], number> = {
+  breakfast: 0.25,
+  lunch: 0.35,
+  dinner: 0.4,
 }
 
 function normalizeMealType(raw?: string): string {
@@ -96,24 +105,39 @@ function normalizeMealType(raw?: string): string {
   return t || 'other'
 }
 
-/** A day is "complete enough" for daily-intake averaging / weight projection. */
 function isDayComplete(day: DayBucket, goalCalories: number): boolean {
-  const mains = ['breakfast', 'lunch', 'dinner'].filter((t) => day.types.has(t)).length
+  const mains = MAIN_SLOTS.filter((t) => day.types.has(t)).length
   if (mains >= 2) return true
   if (day.count >= 3) return true
   if (goalCalories > 0 && day.cal >= goalCalories * 0.7) return true
   return false
 }
 
+function avg(nums: number[]) {
+  if (nums.length === 0) return 0
+  return nums.reduce((a, b) => a + b, 0) / nums.length
+}
+
 /**
- * Build intake stats with honesty about partial days.
- * avg_logged_* = only what was recorded (can look tiny if one meal).
- * projected_daily_* = basis for weight math (complete days only, or null).
+ * Build intake stats that respect missing photos:
+ * - Days with no logs are IGNORED (not 0 kcal).
+ * - Missing meal slots on a logged day are filled from slot history, else goal shares.
+ * - Weight math uses this filled projected daily average — never raw one-meal totals.
  */
 function buildTrendStats(meals: MealInput[], goalCalories: number, goalProtein: number) {
   const byDay = new Map<string, DayBucket>()
+  const slotSamples: Record<string, { cal: number[]; protein: number[] }> = {
+    breakfast: { cal: [], protein: [] },
+    lunch: { cal: [], protein: [] },
+    dinner: { cal: [], protein: [] },
+    snack: { cal: [], protein: [] },
+  }
+
   for (const m of meals) {
     const day = (m.createdAt ? new Date(m.createdAt) : new Date()).toISOString().slice(0, 10)
+    const type = normalizeMealType(m.mealType)
+    const cal = Number(m.calories) || 0
+    const protein = Number(m.protein) || 0
     const cur = byDay.get(day) ?? {
       cal: 0,
       protein: 0,
@@ -121,14 +145,32 @@ function buildTrendStats(meals: MealInput[], goalCalories: number, goalProtein: 
       fat: 0,
       count: 0,
       types: new Set<string>(),
+      byType: {},
     }
-    cur.cal += Number(m.calories) || 0
-    cur.protein += Number(m.protein) || 0
+    cur.cal += cal
+    cur.protein += protein
     cur.carbs += Number(m.carbs) || 0
     cur.fat += Number(m.fat) || 0
     cur.count += 1
-    cur.types.add(normalizeMealType(m.mealType))
+    cur.types.add(type)
+    const slot = cur.byType[type] ?? { cal: 0, protein: 0, count: 0 }
+    slot.cal += cal
+    slot.protein += protein
+    slot.count += 1
+    cur.byType[type] = slot
     byDay.set(day, cur)
+
+    if (slotSamples[type]) {
+      slotSamples[type].cal.push(cal)
+      slotSamples[type].protein.push(protein)
+    }
+  }
+
+  const slotAvgCal: Record<string, number> = {}
+  const slotAvgProtein: Record<string, number> = {}
+  for (const key of Object.keys(slotSamples)) {
+    slotAvgCal[key] = Math.round(avg(slotSamples[key].cal))
+    slotAvgProtein[key] = Math.round(avg(slotSamples[key].protein) * 10) / 10
   }
 
   const days = [...byDay.values()]
@@ -150,32 +192,79 @@ function buildTrendStats(meals: MealInput[], goalCalories: number, goalProtein: 
   const completeDays = days.filter((d) => isDayComplete(d, goalCalories))
   const completeCount = completeDays.length
 
+  // Fill missing main slots on every day that has at least one log.
+  const filledDays: { cal: number; protein: number; fillCal: number; complete: boolean }[] = []
+  for (const d of days) {
+    let fillCal = 0
+    let fillProtein = 0
+    for (const slot of MAIN_SLOTS) {
+      if (d.types.has(slot)) continue
+      const histCal = slotAvgCal[slot] || 0
+      const histProtein = slotAvgProtein[slot] || 0
+      if (histCal > 0) {
+        fillCal += histCal
+        fillProtein += histProtein
+      } else if (goalCalories > 0) {
+        fillCal += Math.round(goalCalories * SLOT_GOAL_SHARE[slot])
+        fillProtein += goalProtein > 0 ? Math.round(goalProtein * SLOT_GOAL_SHARE[slot] * 10) / 10 : 0
+      }
+    }
+    // If user often logs snacks, add typical snack once when none logged that day.
+    const snackHist = slotAvgCal.snack || 0
+    if (snackHist > 0 && !d.types.has('snack') && slotSamples.snack.cal.length >= 2) {
+      fillCal += snackHist
+      fillProtein += slotAvgProtein.snack || 0
+    }
+    filledDays.push({
+      cal: d.cal + fillCal,
+      protein: d.protein + fillProtein,
+      fillCal,
+      complete: isDayComplete(d, goalCalories),
+    })
+  }
+
   let projectedDailyCalories: number | null = null
   let projectedDailyProtein: number | null = null
-  let projectionBasis: 'complete_days' | 'insufficient' = 'insufficient'
+  let projectionBasis: 'complete_days' | 'filled_partial_days' | 'insufficient' = 'insufficient'
+  let estimatedFillKcalAvg = 0
 
   if (completeCount >= 1) {
+    // Prefer real complete days when available.
     projectedDailyCalories = Math.round(
       completeDays.reduce((s, d) => s + d.cal, 0) / completeCount,
     )
     projectedDailyProtein =
       Math.round((completeDays.reduce((s, d) => s + d.protein, 0) / completeCount) * 10) / 10
     projectionBasis = 'complete_days'
+    // Still note average fill on incomplete days for transparency.
+    const incompleteFilled = filledDays.filter((d) => !d.complete)
+    if (incompleteFilled.length > 0) {
+      estimatedFillKcalAvg = Math.round(avg(incompleteFilled.map((d) => d.fillCal)))
+    }
+  } else if (filledDays.length > 0) {
+    projectedDailyCalories = Math.round(avg(filledDays.map((d) => d.cal)))
+    projectedDailyProtein = Math.round(avg(filledDays.map((d) => d.protein)) * 10) / 10
+    estimatedFillKcalAvg = Math.round(avg(filledDays.map((d) => d.fillCal)))
+    projectionBasis = 'filled_partial_days'
   }
+
+  const fillShare =
+    projectedDailyCalories && projectedDailyCalories > 0
+      ? estimatedFillKcalAvg / projectedDailyCalories
+      : 1
 
   const incompleteLogging =
     daysLogged === 0 ||
     completeCount === 0 ||
     (goalCalories > 0 && loggedAvg.calories < goalCalories * 0.55 && avgMealsPerDay < 2.5)
 
-  /** high: 3+ complete days; medium: 1–2 complete; low: only partial logs */
   let confidence: 'low' | 'medium' | 'high' = 'low'
-  if (completeCount >= 3) confidence = 'high'
-  else if (completeCount >= 1) confidence = 'medium'
+  if (completeCount >= 3 && fillShare < 0.15) confidence = 'high'
+  else if (completeCount >= 1 || (filledDays.length >= 2 && fillShare < 0.55)) confidence = 'medium'
+  else if (filledDays.length >= 1) confidence = 'low'
 
-  const projectionUsable = projectionBasis === 'complete_days' && projectedDailyCalories !== null
+  const projectionUsable = projectedDailyCalories != null && mealCount > 0
 
-  // Soft coverage hint for the model (not used for weight math when incomplete).
   const coverageRatio =
     goalCalories > 0
       ? Math.min(1, Math.round((loggedAvg.calories / goalCalories) * 100) / 100)
@@ -186,25 +275,33 @@ function buildTrendStats(meals: MealInput[], goalCalories: number, goalProtein: 
     complete_days: completeCount,
     meal_count: mealCount,
     avg_meals_per_day: avgMealsPerDay,
-    // Raw logged averages (can be one breakfast only — DO NOT treat as full-day intake)
     avg_daily_calories: loggedAvg.calories,
     avg_daily_protein: loggedAvg.protein,
     avg_daily_carbs: loggedAvg.carbs,
     avg_daily_fat: loggedAvg.fat,
-    // Honest projection inputs
     projected_daily_calories: projectedDailyCalories,
     projected_daily_protein: projectedDailyProtein,
     projection_basis: projectionBasis,
     projection_usable: projectionUsable,
     incomplete_logging: incompleteLogging,
+    fills_unlogged_meals: estimatedFillKcalAvg > 0 || projectionBasis === 'filled_partial_days',
+    estimated_fill_kcal_avg: estimatedFillKcalAvg,
+    unlogged_days_excluded: true,
     coverage_ratio_vs_goal: coverageRatio,
     confidence,
+    slot_averages_kcal: {
+      breakfast: slotAvgCal.breakfast || null,
+      lunch: slotAvgCal.lunch || null,
+      dinner: slotAvgCal.dinner || null,
+      snack: slotAvgCal.snack || null,
+    },
     goal_calories: goalCalories || null,
     goal_protein: goalProtein || null,
   }
 }
 
-function enforceLowConfidenceTrends(
+/** Only when there is truly nothing to project from. */
+function enforceNoDataTrends(
   parsed: {
     weight_trend: { direction: string; estimate_4w: string; explanation: string }
     muscle_trend: { direction: string; estimate_4w: string; explanation: string }
@@ -222,45 +319,39 @@ function enforceLowConfidenceTrends(
     ...parsed,
     weight_trend: {
       direction: 'maintain',
-      estimate_4w: ko ? '기록 더 필요' : 'Need more logs',
+      estimate_4w: ko ? '기록 필요' : 'Need logs',
       explanation: ko
-        ? '아침·점심 등 일부만 있으면 하루 섭취로 보지 않아요. 하루 2끼 이상(또는 목표의 70%+)이 쌓이면 체중 전망을 냅니다.'
-        : 'Partial logs (e.g. breakfast only) are not treated as a full day’s intake. Add 2+ meals/day (or ~70%+ of your calorie goal) for a weight outlook.',
+        ? '아직 식사 기록이 없어 체중 전망을 낼 수 없어요. 사진을 올리면 미기록 끼니·날도 고려해 추정해요.'
+        : 'No meals logged yet — upload photos and we’ll estimate including unlogged meals/days carefully.',
     },
     muscle_trend: {
       direction: 'maintain',
-      estimate_4w: ko ? '기록 더 필요' : 'Need more logs',
+      estimate_4w: ko ? '기록 필요' : 'Need logs',
       explanation: ko
-        ? '단백질 추정도 하루 기록이 더 채워진 뒤가 정확해요.'
-        : 'Protein trend is more reliable after fuller daily logs.',
+        ? '단백질 전망도 기록이 생긴 뒤 가능해요.'
+        : 'Protein outlook needs at least some logged meals.',
     },
     energy_trend: {
       direction: 'stable',
       explanation: ko
-        ? '지금은 기록된 끼니 품질만 참고하고, 하루 전체 전망은 보류해요.'
-        : 'For now we only note logged meals — full-day energy outlook waits for better coverage.',
+        ? '기록이 쌓이면 에너지 경향을 말씀드릴게요.'
+        : 'Energy trends appear after some meals are logged.',
     },
-    outlook_2w: ko
-      ? '며칠간 아침·점심·저녁을 이어서 기록해 보면 2주 전망이 선명해져요.'
-      : 'Log fuller days for a clearer 2-week outlook.',
-    outlook_4w: ko
-      ? '하루 기록이 충분히 쌓이면 4주 체중·근력 전망을 다시 계산해요.'
-      : 'We’ll recalculate the 4-week outlook once daily coverage improves.',
-    outlook_8w: ko
-      ? '꾸준히 기록할수록 8주 추정이 현실에 가까워집니다.'
-      : 'Steady logging makes the 8-week estimate more realistic.',
+    outlook_2w: ko ? '식사를 기록하면 2주 전망을 시작해요.' : 'Log meals to start a 2-week outlook.',
+    outlook_4w: ko ? '기록이 이어지면 4주 전망이 생겨요.' : 'Keep logging for a 4-week outlook.',
+    outlook_8w: ko ? '꾸준히 기록할수록 8주 추정이 현실에 가까워져요.' : 'Steady logging improves the 8-week estimate.',
     predicted_goal_note: ko
-      ? '지금은 일부 끼니만 보여요. 하루를 더 채우면 목표가 눈에 보여요.'
-      : 'Only part of the day is logged — fill in more meals for a clearer goal path.',
+      ? '사진이 없는 날·끼니도 있을 수 있어요. 일단 한 끼부터 올려 보세요.'
+      : 'Some days or meals may go unlogged — start with one meal photo.',
     disclaimer: ko
-      ? '일부 끼니만 기록된 상태의 추정입니다. 하루·며칠 기록이 쌓이면 신뢰도가 올라갑니다. 의료 조언이 아닙니다.'
-      : 'Estimate based on partial meal logs. Reliability rises with fuller days. Not medical advice.',
+      ? '기록이 없을 때는 전망을 내지 않습니다. 의료 조언이 아닙니다.'
+      : 'No outlook without logs. Not medical advice.',
   }
 }
 
 /**
  * AI Coach via Responses API + Structured Outputs.
- * Weight outlook uses complete-day intake only — never “one meal × meals/day”.
+ * Missing photos ≠ 0 kcal; partial days are filled from history/goals for projection.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -331,19 +422,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(supportsReasoningEffort(model)
         ? { reasoning: { effort: getFastReasoningEffort() } }
         : {}),
-      instructions: `My Cal AI Plus coach. Be honest about incomplete logs.
+      instructions: `My Cal AI Plus coach. People skip photos some days/meals — handle that honestly.
 User strings in ${lang}. Be terse.
 
-CRITICAL — how calories work:
-- avg_daily_calories = sum of LOGGED meals that day ÷ days. If only breakfast (e.g. 485 kcal) was logged, this number is ~485 — NOT a full day, NOT “per-meal × 3”.
-- NEVER multiply one meal by 2–3 to invent a daily total.
-- For weight change (~7700 kcal ≈ 1 kg), ONLY use projected_daily_calories when projection_usable=true (based on complete days: 2+ main meals, or ≥3 logs, or ≥70% of calorie goal).
-- If projection_usable=false OR confidence=low OR incomplete_logging=true:
-  - weight/muscle estimate_4w must say more logging is needed (not a big kg change).
-  - direction: maintain (weight/muscle); energy: stable.
-  - Do NOT claim large fat loss from a single small meal day.
-- Score (0–100): judge logged meals vs goals fairly; partial days can still score meal quality, but keep score moderate if coverage is low.
-- predicted_goal_note: encourage fuller daily logging when incomplete.
+CRITICAL — calorie math:
+- Days with NO photos are excluded (never treat as 0 kcal binge/fast day).
+- avg_daily_calories = logged-only totals (can be just breakfast). NEVER use this alone for weight kg forecasts.
+- projected_daily_calories already fills missing meal slots from slot history or goal shares. USE THIS for weight (~7700 kcal ≈ 1 kg) when projection_usable=true.
+- NEVER invent daily intake as (one meal × 2 or 3).
+- If fills_unlogged_meals=true: say outlook includes estimates for unlogged meals; use WIDER ranges when confidence=low.
+- If confidence=low: still allow a cautious outlook using projected_daily_calories, but avoid dramatic kg claims; prefer maintain / small ranges.
+- If projection_usable=false (no meals): say logging is needed.
+- Score: judge logged meals; don’t punish hard for unlogged days.
+- Mention briefly that skipped-photo days/meals are normal and estimated.
 
 Fields: summary, advice≤100chars, focus 2-4 tags, score, predicted_goal_note,
 weight_trend, muscle_trend, energy_trend, outlook_2w/4w/8w, disclaimer.
@@ -388,9 +479,8 @@ Meal keys: f=food t=type c=kcal p/cb/ft=macros d=YYYY-MM-DD.`,
       disclaimer: string
     }
 
-    // Hard safety net — never let the model invent crash diets from one breakfast.
-    if (!trend.projection_usable || trend.confidence === 'low') {
-      parsed = enforceLowConfidenceTrends(parsed, lang)
+    if (!trend.projection_usable || trend.meal_count === 0) {
+      parsed = enforceNoDataTrends(parsed, lang)
     }
 
     return res.status(200).json({
@@ -417,6 +507,9 @@ Meal keys: f=food t=type c=kcal p/cb/ft=macros d=YYYY-MM-DD.`,
         confidence: trend.confidence,
         projection_usable: trend.projection_usable,
         incomplete_logging: trend.incomplete_logging,
+        fills_unlogged_meals: trend.fills_unlogged_meals,
+        estimated_fill_kcal_avg: trend.estimated_fill_kcal_avg,
+        projection_basis: trend.projection_basis,
       },
       model,
       usage: response.usage ?? null,
