@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CoachResult, MealRecommendResult } from '@/types'
 import { CoachWaitPanel } from '@/components/CoachWaitPanel'
 import { tReplace } from '@/i18n/translations'
@@ -39,7 +39,7 @@ function directionTone(direction: string) {
   return 'bg-brand-green-soft text-brand-green dark:bg-brand-green/20'
 }
 
-type Spotlight = 'recommend' | 'coach'
+type ActivePanel = 'recommend' | 'coach'
 
 export function CoachPage() {
   const { t, locale } = useI18n()
@@ -53,7 +53,8 @@ export function CoachPage() {
   const [error, setError] = useState<string | null>(null)
   const [staleLocale, setStaleLocale] = useState(false)
   const [resultLocale, setResultLocale] = useState<typeof locale | null>(null)
-  const [spotlight, setSpotlight] = useState<Spotlight | null>(null)
+  /** Only one result panel at a time — matches the button the user just pressed. */
+  const [activePanel, setActivePanel] = useState<ActivePanel | null>(null)
 
   const coachRef = useRef<HTMLDivElement>(null)
   const recommendRef = useRef<HTMLElement>(null)
@@ -77,6 +78,8 @@ export function CoachPage() {
     setLoading(true)
     setError(null)
     setStaleLocale(false)
+    setRecommend(null)
+    setActivePanel('coach')
     try {
       const result = await fetchCoachAdvice({
         meals: meals.slice(0, 20),
@@ -96,7 +99,6 @@ export function CoachPage() {
         ),
       })
       setCoach(result)
-      setSpotlight('coach')
       setResultLocale(locale)
       requestAnimationFrame(() => {
         coachRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -111,6 +113,8 @@ export function CoachPage() {
   async function runRecommend() {
     setRecommendLoading(true)
     setError(null)
+    setCoach(null)
+    setActivePanel('recommend')
     try {
       const result = await fetchMealRecommendations({
         meals: meals.slice(0, 16),
@@ -121,7 +125,6 @@ export function CoachPage() {
         goalWeightKg: settings.goalWeightKg,
       })
       setRecommend(result)
-      setSpotlight('recommend')
       requestAnimationFrame(() => {
         recommendRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       })
@@ -133,32 +136,18 @@ export function CoachPage() {
   }
 
   const recommendSection =
-    recommend && !recommendLoading ? (
+    activePanel === 'recommend' && recommend && !recommendLoading ? (
       <section ref={recommendRef} className="scroll-mt-24 space-y-3">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-brand-green">
-              {t.coach.whatToEat}
-            </p>
-            <h2 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
-              {t.coach.whatToEatTitle}
-            </h2>
-            <p className="mt-0.5 text-sm text-brand-muted dark:text-white/55">
-              {recommend.meal_slot} · {recommend.remaining_note}
-            </p>
-          </div>
-          {coach && spotlight === 'coach' && (
-            <button
-              type="button"
-              className="text-xs font-semibold text-brand-green underline-offset-2 hover:underline"
-              onClick={() => {
-                setSpotlight('recommend')
-                recommendRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }}
-            >
-              {t.coach.showRecommend}
-            </button>
-          )}
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-brand-green">
+            {t.coach.whatToEat}
+          </p>
+          <h2 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
+            {t.coach.whatToEatTitle}
+          </h2>
+          <p className="mt-0.5 text-sm text-brand-muted dark:text-white/55">
+            {recommend.meal_slot} · {recommend.remaining_note}
+          </p>
         </div>
 
         {recommend.situation_note && (
@@ -233,29 +222,15 @@ export function CoachPage() {
     ) : null
 
   const coachSection =
-    coach && !loading ? (
+    activePanel === 'coach' && coach && !loading ? (
       <div ref={coachRef} className="scroll-mt-24 space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-brand-green">
-              {t.coach.adviceSection}
-            </p>
-            <h2 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
-              {t.coach.trendsTitle}
-            </h2>
-          </div>
-          {recommend && spotlight === 'recommend' && (
-            <button
-              type="button"
-              className="text-xs font-semibold text-brand-green underline-offset-2 hover:underline"
-              onClick={() => {
-                setSpotlight('coach')
-                coachRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }}
-            >
-              {t.coach.showCoach}
-            </button>
-          )}
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-brand-green">
+            {t.coach.adviceSection}
+          </p>
+          <h2 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
+            {t.coach.trendsTitle}
+          </h2>
         </div>
 
         <div className="glass-card space-y-4 p-5 sm:p-6">
@@ -458,15 +433,6 @@ export function CoachPage() {
       </div>
     ) : null
 
-  const ordered: ReactNode[] = []
-  if (spotlight === 'coach') {
-    if (coachSection) ordered.push(coachSection)
-    if (recommendSection) ordered.push(recommendSection)
-  } else {
-    if (recommendSection) ordered.push(recommendSection)
-    if (coachSection) ordered.push(coachSection)
-  }
-
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
@@ -540,7 +506,8 @@ export function CoachPage() {
         />
       )}
 
-      {ordered}
+      {activePanel === 'recommend' && recommendSection}
+      {activePanel === 'coach' && coachSection}
     </div>
   )
 }

@@ -265,6 +265,165 @@ function enforceHealthFirst<T extends {
 }
 
 /**
+ * Keep coaching balanced: calories ↔ protein ↔ energy ↔ sustainable goal.
+ * Runs after muscle/health hard guards so we don’t only push one lever.
+ */
+function enforceBalancedCoaching<T extends {
+  summary: string
+  advice: string
+  focus: string[]
+  predicted_goal_note: string
+  energy_trend: { direction: string; explanation: string }
+}>(
+  parsed: T,
+  cal: number,
+  pro: number,
+  goalCalories: number,
+  goalProtein: number,
+  safeFloor: number,
+  mode: 'lose' | 'gain' | 'maintain',
+  lang: string,
+): T {
+  const ko = lang !== 'English'
+  const band = intakeHealthBand(cal, goalCalories, safeFloor)
+  const protein = proteinAdequacy(pro, goalProtein)
+  const calGap = Math.round(cal - goalCalories)
+  const proGap = Math.round(pro - goalProtein)
+  let next = { ...parsed }
+
+  const uniqFocus = (tags: string[]) =>
+    tags
+      .filter((v, i, a) => a.findIndex((x) => x.toLowerCase() === v.toLowerCase()) === i)
+      .slice(0, 4)
+
+  // Unsafe under already handled — leave that message.
+  if (band === 'unsafe_under') return next
+
+  // On track: affirm balance; one gentle habit — don’t invent crises.
+  if (band === 'on_target' && (protein === 'ok' || protein === 'unknown')) {
+    return {
+      ...next,
+      summary: ko
+        ? `칼로리·단백질이 목표에 잘 맞고 있어요`
+        : `Calories and protein are near your targets`,
+      advice: ko
+        ? `지금 페이스를 유지하세요. 끼니마다 단백질을 챙기고, 야식·음료 칼로리만 조심하면 목표와 건강 모두에 좋아요.`
+        : `Keep this pace — solid protein each meal and watch late snacks/drinks for both goal and health.`,
+      predicted_goal_note: ko
+        ? `지속 가능한 적자/목표 근처예요. 급하게 더 줄이기보다 이 균형을 지키는 편이 유리합니다.`
+        : `You’re near a sustainable target — holding the balance beats cutting harder.`,
+      focus: uniqFocus([
+        ko ? '균형 유지' : 'Stay balanced',
+        ko ? '단백질 유지' : 'Keep protein',
+        ...(next.focus || []),
+      ]),
+      energy_trend: {
+        direction: next.energy_trend?.direction === 'down' ? 'stable' : next.energy_trend?.direction || 'stable',
+        explanation: ko
+          ? '목표 근처로 먹으면 에너지가 비교적 안정적인 편이에요.'
+          : 'Eating near your goal usually keeps energy steadier.',
+      },
+    }
+  }
+
+  // Over target (esp. fat-loss): trim calories without sacrificing protein.
+  if (band === 'over') {
+    const overKcal = Math.max(0, calGap)
+    if (mode === 'lose' || mode === 'maintain') {
+      const tags = [
+        ko ? '칼로리 조절' : 'Trim calories',
+        protein === 'low' || protein === 'critical'
+          ? ko
+            ? '단백질 유지'
+            : 'Keep protein'
+          : ko
+            ? '간식·음료 줄이기'
+            : 'Cut snacks/drinks',
+      ]
+      return {
+        ...next,
+        summary: ko
+          ? `칼로리가 목표보다 약 ${overKcal}kcal 많아요`
+          : `About ${overKcal} kcal over your calorie goal`,
+        advice: ko
+          ? protein === 'low' || protein === 'critical'
+            ? `열량은 줄이되 단백질은 지키세요. 밥·소스·간식·음료를 조금 줄이고, 살코기·계란·두부는 유지하세요.`
+            : `단백질은 유지한 채 간식·음료·소스·밥 양만 줄여 목표(${goalCalories}kcal)에 맞춰 보세요.`
+          : protein === 'low' || protein === 'critical'
+            ? `Trim extras (rice, sauces, snacks, drinks) but keep lean protein high.`
+            : `Keep protein, trim snacks/drinks/sauces/rice to land near ${goalCalories} kcal.`,
+        predicted_goal_note: ko
+          ? `감량·유지는 ‘덜 굶기’가 아니라 목표 칼로리에 맞추는 게 건강에도 유리해요.`
+          : `Hitting the calorie goal (not starving) is better for fat loss and health.`,
+        focus: uniqFocus([...tags, ...(next.focus || [])]),
+      }
+    }
+    if (mode === 'gain' && protein === 'ok') {
+      return {
+        ...next,
+        summary: ko ? `섭취가 넉넉해요 — 증량에 유리` : `Intake is ample — helpful for gain`,
+        advice: ko
+          ? `칼로리는 충분해요. 단백질 ${goalProtein}g을 꾸준히 채우며 근력 운동과 함께 가세요.`
+          : `Calories look enough — keep hitting ~${goalProtein}g protein with training.`,
+        focus: uniqFocus([ko ? '단백질 유지' : 'Keep protein', ...(next.focus || [])]),
+      }
+    }
+  }
+
+  // Mild under on lose + protein OK: don’t push crash deeper.
+  if (band === 'mild_under' && mode === 'lose' && protein === 'ok') {
+    return {
+      ...next,
+      summary: ko
+        ? `목표보다 조금 적게 먹고 있어요 (약 ${Math.abs(calGap)}kcal)`
+        : `A bit under goal (~${Math.abs(calGap)} kcal)`,
+      advice: ko
+        ? `조금 부족한 정도는 괜찮아요. 더 줄이지 말고, 단백질과 채소를 지키며 목표(${goalCalories}kcal) 근처에 머무르세요.`
+        : `Mild under is fine — don’t cut further; stay near ${goalCalories} kcal with protein and veggies.`,
+      predicted_goal_note: ko
+        ? `무리한 추가 적자보다 목표 근처 + 단백질이 근육·에너지에 더 안전합니다.`
+        : `Near-goal intake + protein is safer for muscle and energy than stacking more deficit.`,
+      focus: uniqFocus([
+        ko ? '목표 근처 유지' : 'Stay near goal',
+        ko ? '단백질 유지' : 'Keep protein',
+        ...(next.focus || []),
+      ]),
+    }
+  }
+
+  // Gain mode under-eating
+  if (mode === 'gain' && (band === 'mild_under' || cal < goalCalories * 0.95)) {
+    return {
+      ...next,
+      summary: ko
+        ? `증량 목표 대비 칼로리가 부족해요`
+        : `Calories are short of your gain goal`,
+      advice: ko
+        ? `하루 약 ${Math.abs(Math.min(0, calGap))}kcal만 더 채워 보세요. 단백질 ${goalProtein}g도 함께.`
+        : `Add about ${Math.abs(Math.min(0, calGap))} kcal/day and keep ~${goalProtein}g protein.`,
+      focus: uniqFocus([ko ? '칼로리 채우기' : 'Add calories', ko ? '단백질' : 'Protein', ...(next.focus || [])]),
+    }
+  }
+
+  // Protein short but calories OK/over: keep protein-first advice (muscle guard may have set it)
+  if ((protein === 'low' || protein === 'critical') && band !== 'unsafe_under') {
+    const need = Math.max(0, -proGap)
+    next = {
+      ...next,
+      focus: uniqFocus([ko ? '단백질 보충' : 'More protein', ...(next.focus || [])]),
+      advice:
+        need > 0
+          ? ko
+            ? `단백질이 약 ${need}g 부족해요. 칼로리는 ${band === 'over' ? '줄이되' : '유지하며'} 매 끼 단백질을 우선하세요.`
+            : `About ${need}g short on protein — ${band === 'over' ? 'trim calories but' : 'keep calories steady and'} prioritize protein each meal.`
+          : next.advice,
+    }
+  }
+
+  return next
+}
+
+/**
  * Build intake stats that respect missing photos:
  * - Days with no logs are IGNORED (not 0 kcal).
  * - Missing meal slots on a logged day are filled from slot history, else goal shares.
@@ -591,35 +750,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(supportsReasoningEffort(model)
         ? { reasoning: { effort: getFastReasoningEffort() } }
         : {}),
-      instructions: `My Cal AI Plus coach. No numeric “nutrition score” — give clear, actionable coaching instead.
-Health first, then fat loss. People skip photos some days/meals — handle that honestly.
-User strings in ${lang}. Practical, specific, kind — not vague.
+      instructions: `My Cal AI Plus coach. No numeric score — balanced, actionable coaching.
+Priority order: (1) health & enough fuel (2) hit THEIR calorie goal sustainably (3) hit protein for muscle (4) steady energy.
+User strings in ${lang}. Specific numbers from JSON. Kind, not preachy.
 
 CRITICAL — calorie math:
-- Days with NO photos are excluded (never treat as 0 kcal).
-- avg_daily_* = logged-only. NEVER use alone for kg forecasts.
-- projected_daily_calories may fill missing slots from history/goal shares. USE for weight (~7700 kcal ≈ 1 kg) when projection_usable=true.
-- projected_daily_protein fills ONLY from real meal history — never invent protein from goals.
-- NEVER invent daily intake as (one meal × 2 or 3).
-- weight_goal_mode=${mode}: lose means calorie GOAL is already a sustainable deficit — hitting THAT goal supports fat loss.
-- Cite real gaps: calorie_gap_vs_goal, protein_gap_vs_goal, goals vs projected/logged.
-- If fills_unlogged_meals=true: mention estimates; wider ranges when confidence=low.
-- If projection_usable=false: logging needed.
+- Days with NO photos are excluded (never 0 kcal).
+- Use projected_daily_* for outlook when projection_usable=true; never invent meal×2/3.
+- projected_daily_protein from meal history only.
+- weight_goal_mode=${mode}: lose = calorie GOAL is already the deficit — aim for THAT goal, not deeper crash.
+- Cite calorie_gap_vs_goal and protein_gap_vs_goal.
 
-CRITICAL — advice quality (replace any score):
-- summary: 1 clear headline of where they stand vs THEIR goals (calories + protein + mode).
-- advice: 2–4 concrete next steps (what to eat more/less of, roughly how many g/kcal). Max ~280 chars. Use numbers from the JSON.
-- predicted_goal_note: honest note on whether this trend supports the weight goal sustainably.
-- focus: 2–4 short action tags (e.g. “단백질 +20g”, “저녁 단백질”).
+CRITICAL — balanced coaching (do all of these):
+- Cover calories AND protein AND energy — never obsess on one if another is worse.
+- intake_health_band=on_target + protein ok → affirm balance; one habit (protein each meal / skip late snacks). Do NOT invent problems.
+- intake_health_band=over (lose/maintain) → trim snacks/drinks/sauces/portions; KEEP protein.
+- intake_health_band=unsafe_under or << safe_calorie_floor(${safeFloor}) → eat UP toward calorie goal + protein; never praise faster loss.
+- protein low → protein foods each meal; if also over calories, say “cut extras, keep protein”.
+- mode=gain and under calories → add food, not only protein powder talk.
+- summary: one honest headline vs goals. advice: 2–4 concrete steps (~280 chars). focus: 2–4 tags.
+- predicted_goal_note: sustainable path for THEIR weight mode.
 
-CRITICAL — health before aggressive loss:
-- intake_health_band=unsafe_under OR calories << goal / below safe_calorie_floor (${safeFloor}): NEVER praise faster weight loss. Tell user to eat closer to the calorie GOAL, keep protein high, protect energy/muscle.
-- Do not encourage crash diets or “the less you eat the better”.
-
-CRITICAL — protein / muscle:
-- muscle_trend MUST follow protein vs goals.protein.
-- If protein <85% of goal: muscle_trend.direction="decrease"; put protein first in advice + focus.
-- A single light meal is NOT enough protein for the day.
+CRITICAL — muscle / outlook:
+- muscle_trend follows protein vs goal; <85% → decrease + protein first.
+- Light snack-only days are not full protein days.
+- outlook ranges wider when confidence=low or fills_unlogged_meals=true.
 
 Fields: summary, advice, focus, predicted_goal_note,
 weight_trend, muscle_trend, energy_trend, outlook_2w/4w/8w, disclaimer.
@@ -672,6 +827,16 @@ Meal keys: f=food t=type c=kcal p/cb/ft=macros d=YYYY-MM-DD.`,
         trend.projected_daily_calories ?? trend.avg_daily_calories
       parsed = enforceMuscleFromProtein(parsed, proteinForMuscle, goalProtein, lang)
       parsed = enforceHealthFirst(
+        parsed,
+        calForHealth,
+        proteinForMuscle,
+        goalCalories,
+        goalProtein,
+        safeFloor,
+        mode,
+        lang,
+      )
+      parsed = enforceBalancedCoaching(
         parsed,
         calForHealth,
         proteinForMuscle,

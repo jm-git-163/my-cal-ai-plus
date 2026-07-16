@@ -147,13 +147,11 @@ export const translations = {
     },
     coach: {
       title: 'AI Coach',
-      subtitle: 'Practical coaching for your calorie & protein goals — and what to do next.',
+      subtitle: 'Tap one button — “what to eat” or coaching — and only that result shows.',
       refresh: 'Get coaching',
       loading: 'Coach is analyzing…',
       empty: 'Scan a few meals for better coaching.',
       adviceSection: 'Coaching',
-      showCoach: 'Show coaching ↑',
-      showRecommend: 'Show “what to eat” ↓',
       focus: 'Focus areas',
       healthUnsafe:
         'Intake looks too low for health. Fat loss works best near your calorie goal with solid protein — not by crashing calories.',
@@ -440,13 +438,11 @@ export const translations = {
     },
     coach: {
       title: 'AI 코치',
-      subtitle: '칼로리·단백질 목표에 맞춘 실질적인 조언과, 다음에 할 일을 알려 드립니다.',
+      subtitle: '버튼을 누르면 그 결과만 보여요 — 지금 뭐먹지 또는 코칭.',
       refresh: '코칭 받기',
       loading: '코치가 분석 중…',
       empty: '식사를 몇 번 스캔하면 코칭이 더 정확해집니다.',
       adviceSection: '코칭',
-      showCoach: '코칭 보기 ↑',
-      showRecommend: '뭐먹지 결과 보기 ↓',
       focus: '집중 포인트',
       healthUnsafe:
         '섭취가 건강 하한보다 낮아 보여요. 감량은 목표 칼로리 근처에서 단백질을 지키며 하는 게 안전합니다 — 극단적 부족은 권하지 않아요.',
