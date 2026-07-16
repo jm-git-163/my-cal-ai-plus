@@ -13,7 +13,7 @@ export function validateImageFile(file: File): string | null {
 }
 
 export async function analyzeFoodImage(params: {
-  image: string
+  image?: string
   /** @deprecated Ignored — single resized JPEG is enough and much faster. */
   preprocess?: string
   locale?: 'ko' | 'en'
@@ -22,6 +22,20 @@ export async function analyzeFoodImage(params: {
   calorieGoal?: number
   /** What the photo alone missed or got wrong (flavor, hidden sides, etc.). */
   userCorrection?: string
+  /** Prior meal estimate — enables fast text-only revise. */
+  priorEstimate?: {
+    food: string
+    grams: number
+    calories: number
+    protein: number
+    fat: number
+    carbs: number
+    ingredients?: string[]
+    items?: Array<{ name: string; grams: number; calories: number }>
+    portionBasis?: string
+    assumptions?: string[]
+  }
+  mode?: 'full' | 'correct'
 }): Promise<NutritionResult> {
   const res = await fetch('/api/vision', {
     method: 'POST',
@@ -33,6 +47,8 @@ export async function analyzeFoodImage(params: {
       goalWeightKg: params.goalWeightKg,
       calorieGoal: params.calorieGoal,
       userCorrection: params.userCorrection?.trim() || undefined,
+      priorEstimate: params.priorEstimate,
+      mode: params.mode,
     }),
   })
 

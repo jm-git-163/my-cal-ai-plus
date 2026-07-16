@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
+  getFastReasoningEffort,
   getOpenAI,
+  getVisionCorrectModel,
   getVisionModel,
   getVisionReasoningEffort,
   supportsReasoningEffort,
@@ -160,14 +162,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       calorieGoal?: number
       /** User fix for what the photo alone misses (flavor, hidden veg, etc.). */
       userCorrection?: string
+      /** Prior estimate — enables fast text-only revise without re-visioning the photo. */
+      priorEstimate?: {
+        food?: string
+        grams?: number
+        calories?: number
+        protein?: number
+        fat?: number
+        carbs?: number
+        ingredients?: string[]
+        items?: Array<{ name?: string; grams?: number; calories?: number }>
+        portionBasis?: string
+        assumptions?: string[]
+      }
+      /** Prefer speed for correction revises. */
+      mode?: 'full' | 'correct'
     }
 
     // Single-pass + one image — dual high-detail passes were too slow on mobile.
-    const detail = 'high' as VisionDetail
-    const twoPass = false
     const lang = body.locale === 'en' ? 'English' : 'Korean'
-    const model = getVisionModel()
     const mode = weightMode(body.currentWeightKg, body.goalWeightKg)
+    const userCorrection =
+      typeof body.userCorrection === 'string' ? body.userCorrection.trim().slice(0, 600) : ''
+    const prior = body.priorEstimate && typeof body.priorEstimate === 'object' ? body.priorEstimate : null
+    const correctMode = body.mode === 'correct' || (Boolean(userCorrection) && Boolean(prior))
+    const twoPass = false
+    const detail = (correctMode ? 'low' : 'high') as VisionDetail
+    const model = correctMode ? getVisionCorrectModel() : getVisionModel()
+    const reasoningEffort = correctMode ? getFastReasoningEffort() : getVisionReasoningEffort()
 
     const candidates = [
       ...(Array.isArray(body.images) ? body.images : []),
@@ -175,13 +197,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ].filter((u): u is string => typeof u === 'string' && u.length > 0)
 
     const unique: string[] = []
-    for (const url of candidates) {
-      if (!unique.includes(url)) unique.push(url)
-      if (unique.length >= 1) break
+    // Correction revise is text-first — skip image upload latency when prior exists.
+    if (!correctMode || !prior) {
+      for (const url of candidates) {
+        if (!unique.includes(url)) unique.push(url)
+        if (unique.length >= 1) break
+      }
     }
 
-    if (unique.length === 0) {
+    if (unique.length === 0 && !correctMode) {
       return res.status(400).json({ error: 'Missing image (base64 data URL)' })
+    }
+    if (correctMode && !userCorrection) {
+      return res.status(400).json({ error: 'Missing userCorrection for revise' })
     }
 
     for (const url of unique) {
@@ -267,15 +295,31 @@ Language for strings: ${lang}.`,
       calorieGoal: body.calorieGoal ?? null,
     }
 
-    const userCorrection =
-      typeof body.userCorrection === 'string' ? body.userCorrection.trim().slice(0, 600) : ''
+    const priorSlim = prior
+      ? {
+          food: prior.food,
+          grams: prior.grams,
+          calories: prior.calories,
+          protein: prior.protein,
+          fat: prior.fat,
+          carbs: prior.carbs,
+          ingredients: prior.ingredients?.slice(0, 8),
+          items: prior.items?.slice(0, 6),
+          portionBasis: prior.portionBasis,
+          assumptions: prior.assumptions?.slice(0, 4),
+        }
+      : null
 
     const pass2 = await client.responses.create({
       model,
-      ...(supportsReasoningEffort(model)
-        ? { reasoning: { effort: getVisionReasoningEffort() } }
-        : {}),
-      instructions: `Nutrition vision for My Cal AI Plus. Structured estimates only — not medical advice.
+      ...(supportsReasoningEffort(model) ? { reasoning: { effort: reasoningEffort } } : {}),
+      instructions: correctMode
+        ? `Fast nutrition revise for My Cal AI Plus. Not medical advice.
+All user-facing strings in ${lang}. Terse.
+Apply the user correction to the prior estimate and update food name, items, grams, calories, protein, carbs, fat.
+Keep fieldConfidence 0–1; tip ≤1 short sentence.
+goalImpact vs weight mode (${mode}): help / caution / neutral.`
+        : `Nutrition vision for My Cal AI Plus. Structured estimates only — not medical advice.
 All user-facing strings in ${lang}. Be concrete and terse.
 
 Required:
@@ -306,9 +350,12 @@ ${
               type: 'input_text',
               text: [
                 twoPass && pass1Context ? `Pass-1 prior JSON:\n${pass1Context}` : '',
+                priorSlim ? `Prior estimate JSON:\n${JSON.stringify(priorSlim)}` : '',
                 `Goals: ${JSON.stringify(goalCtx)}`,
                 userCorrection ? `User correction (must apply):\n${userCorrection}` : '',
-                'Estimate nutrition with fieldConfidence + assumptions from this meal photo.',
+                correctMode
+                  ? 'Revise the prior estimate with the correction. Return full nutrition JSON.'
+                  : 'Estimate nutrition with fieldConfidence + assumptions from this meal photo.',
               ]
                 .filter(Boolean)
                 .join('\n'),

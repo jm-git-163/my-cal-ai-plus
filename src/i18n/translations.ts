@@ -347,6 +347,21 @@ export const translations = {
       reanalyzing: 'Recalculating…',
       reanalyzeNeedNote: 'Add a short note to recalculate.',
       reanalyzeFailed: 'Recalculation failed.',
+      tipLabel: 'Tip',
+      waitTitleRefine: 'Updating your correction',
+      waitAlmost: 'Almost done…',
+      waitHint: 'Usually a few seconds. Stay on this screen.',
+      waitStagesRefine: [
+        'Reading your note…',
+        'Adjusting calories & macros…',
+        'Saving to your diary…',
+      ],
+      waitTips: [
+        'Protein at each meal steadies hunger better than one huge dinner.',
+        'A glass of water first often softens snack cravings.',
+        'Honest logs beat perfect days — trends matter more.',
+        'You’re already doing the hard part: checking in.',
+      ],
     },
   },
   ko: {
@@ -694,6 +709,21 @@ export const translations = {
       reanalyzing: '다시 계산 중…',
       reanalyzeNeedNote: '다시 계산하려면 잘못된 내용을 짧게 적어 주세요.',
       reanalyzeFailed: '다시 계산에 실패했어요.',
+      tipLabel: '팁',
+      waitTitleRefine: '수정 내용 반영 중',
+      waitAlmost: '거의 끝났어요…',
+      waitHint: '보통 몇 초면 끝나요. 이 화면을 유지해 주세요.',
+      waitStagesRefine: [
+        '적어 주신 내용을 읽는 중…',
+        '칼로리·영양을 맞추는 중…',
+        '식단에 저장하는 중…',
+      ],
+      waitTips: [
+        '매 끼니 단백질을 넣으면 저녁 폭식을 줄이기 쉬워요.',
+        '간식 전에 물 한 잔 — 허기가 많이 가라앉는 경우가 많아요.',
+        '완벽한 하루보다 솔직한 기록이 더 도움이 돼요.',
+        '이미 잘하고 있어요 — 확인하고 기록하는 게 제일 어려운 부분이에요.',
+      ],
     },
   },
 } as const

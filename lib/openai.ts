@@ -23,6 +23,17 @@ export function getVisionModel() {
 }
 
 /**
+ * User-correction revise (prior + note). Prefer fast model — no need for frontier vision.
+ */
+export function getVisionCorrectModel() {
+  return (
+    process.env.OPENAI_VISION_CORRECT_MODEL ||
+    process.env.OPENAI_FAST_MODEL ||
+    'gpt-4.1-mini'
+  )
+}
+
+/**
  * Coach / “지금 뭐먹지” — speed over frontier quality.
  * Default gpt-4.1-mini (does NOT fall back to OPENAI_MODEL, which is often slow).
  */

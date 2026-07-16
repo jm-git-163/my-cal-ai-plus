@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { MealEntry } from '@/types'
+import { CoachWaitPanel } from '@/components/CoachWaitPanel'
 import { NumberField } from '@/components/NumberField'
 import { mealTypeLabel, useI18n } from '@/hooks/useI18n'
 import { analyzeFoodImage } from '@/services/vision'
@@ -31,6 +32,17 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
     }
   }, [meal, editing])
 
+  // Discourage leave while recalculation is in flight.
+  useEffect(() => {
+    if (!refining) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [refining])
+
   const time = new Date(meal.createdAt).toLocaleTimeString(locale === 'ko' ? 'ko-KR' : 'en-US', {
     hour: '2-digit',
     minute: '2-digit',
@@ -39,9 +51,11 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
   const items = meal.items?.filter((it) => it.name?.trim()) ?? []
   const ingredients = meal.ingredients?.filter((s) => s.trim()) ?? []
   const assumptions = meal.assumptions?.filter((s) => s.trim()) ?? []
-  const canRecalc = Boolean(meal.imageDataUrl?.startsWith('data:image/')) && Boolean(onUpdate)
+  // Correction revise is text-first from prior — photo optional.
+  const canRecalc = Boolean(onUpdate)
 
   function startEdit() {
+    if (refining) return
     const next = draftFromMeal(meal)
     setDraft(next)
     setBaseline(next)
@@ -50,6 +64,7 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
   }
 
   function closeEdit() {
+    if (refining) return
     setEditing(false)
     setCorrectionNote('')
     setError(null)
@@ -105,7 +120,7 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
   }
 
   async function recalculateWithNote(note: string) {
-    if (!onUpdate || !meal.imageDataUrl) return
+    if (!onUpdate) return
     setRefining(true)
     setError(null)
     try {
@@ -113,14 +128,26 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
         draft.food.trim() && draft.food.trim() !== meal.food
           ? `Correct food name: ${draft.food.trim()}`
           : ''
-      const prior = `Prior estimate to revise: ${meal.food} · ${meal.calories}kcal · P${meal.protein}/C${meal.carbs}/F${meal.fat} · ${meal.grams}g`
       const nutrition = await analyzeFoodImage({
-        image: meal.imageDataUrl,
+        // Fast path: revise prior + note (no full photo re-vision).
+        mode: 'correct',
         locale,
         currentWeightKg: settings.currentWeightKg,
         goalWeightKg: settings.goalWeightKg,
         calorieGoal: settings.goals.calories,
-        userCorrection: [note, nameHint, prior].filter(Boolean).join('\n'),
+        userCorrection: [note, nameHint].filter(Boolean).join('\n'),
+        priorEstimate: {
+          food: meal.food,
+          grams: meal.grams,
+          calories: meal.calories,
+          protein: meal.protein,
+          fat: meal.fat,
+          carbs: meal.carbs,
+          ingredients: meal.ingredients,
+          items: meal.items,
+          portionBasis: meal.portionBasis,
+          assumptions: meal.assumptions,
+        },
       })
       await onUpdate(meal.id, {
         food: nutrition.food,
@@ -168,6 +195,7 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
         <button
           type="button"
           onClick={() => {
+            if (refining) return
             setOpen((v) => {
               if (v) closeEdit()
               return !v
@@ -176,6 +204,7 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
           className="flex min-w-0 flex-1 gap-0 text-left"
           aria-expanded={open}
           aria-label={open ? t.meal.hideDetails : t.meal.showDetails}
+          disabled={refining}
         >
           <div className="relative h-[5.5rem] w-[5.5rem] shrink-0 overflow-hidden sm:h-28 sm:w-28">
             {meal.imageDataUrl ? (
@@ -241,7 +270,20 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
 
       {open && (
         <div className="space-y-3 border-t border-black/[0.05] bg-black/[0.015] px-3 py-3 dark:border-white/10 dark:bg-white/[0.03] sm:px-4">
-          {!editing ? (
+          {refining && (
+            <CoachWaitPanel
+              mode="scan"
+              title={t.meal.waitTitleRefine}
+              stages={t.meal.waitStagesRefine}
+              tips={t.meal.waitTips}
+              almost={t.meal.waitAlmost}
+              hint={t.meal.waitHint}
+              tipLabel={t.meal.tipLabel}
+              almostAfterSec={6}
+            />
+          )}
+
+          {!editing && !refining ? (
             <>
               {meal.grams > 0 && (
                 <p className="tabular text-xs text-brand-muted dark:text-white/55">
@@ -321,7 +363,7 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
                 </button>
               )}
             </>
-          ) : (
+          ) : editing && !refining ? (
             <div className="space-y-3">
               <div>
                 <p className="font-display text-base font-semibold text-brand-ink dark:text-white">
@@ -440,7 +482,7 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
                 </button>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       )}
     </article>
