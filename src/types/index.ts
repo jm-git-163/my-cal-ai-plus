@@ -76,6 +76,11 @@ export interface CoachResult {
     avg_daily_protein: number
     avg_daily_carbs: number
     avg_daily_fat: number
+    complete_days?: number
+    projected_daily_calories?: number | null
+    confidence?: 'low' | 'medium' | 'high'
+    projection_usable?: boolean
+    incomplete_logging?: boolean
   }
 }
 

@@ -316,14 +316,43 @@ export function CoachPage() {
             </div>
 
             {coach.stats && coach.stats.days_logged > 0 && (
-              <div className="rounded-2xl bg-black/[0.03] px-4 py-3 dark:bg-white/5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-brand-muted dark:text-white/45">
-                  {t.coach.avgIntake} · {tReplace(t.coach.daysLogged, { n: String(coach.stats.days_logged) })}
-                </p>
-                <p className="mt-1 text-sm text-brand-ink dark:text-white/80">
-                  {coach.stats.avg_daily_calories} kcal · P {coach.stats.avg_daily_protein}g · C{' '}
-                  {coach.stats.avg_daily_carbs}g · F {coach.stats.avg_daily_fat}g
-                </p>
+              <div className="space-y-2">
+                {(coach.stats.incomplete_logging ||
+                  coach.stats.confidence === 'low' ||
+                  coach.stats.projection_usable === false) && (
+                  <p className="rounded-2xl border border-brand-orange/25 bg-brand-orange-soft/70 px-4 py-3 text-sm leading-relaxed text-brand-orange dark:border-brand-orange/30 dark:bg-brand-orange/15">
+                    {t.coach.confidenceLow}
+                  </p>
+                )}
+                {coach.stats.confidence === 'medium' && coach.stats.projection_usable && (
+                  <p className="rounded-2xl bg-brand-blue-soft/80 px-4 py-3 text-sm leading-relaxed text-brand-blue dark:bg-brand-blue/15">
+                    {tReplace(t.coach.confidenceMedium, {
+                      n: String(coach.stats.complete_days ?? coach.stats.days_logged),
+                    })}
+                  </p>
+                )}
+                {coach.stats.confidence === 'high' && (
+                  <p className="text-xs text-brand-muted dark:text-white/45">
+                    {tReplace(t.coach.confidenceHigh, {
+                      n: String(coach.stats.complete_days ?? coach.stats.days_logged),
+                    })}
+                  </p>
+                )}
+                <div className="rounded-2xl bg-black/[0.03] px-4 py-3 dark:bg-white/5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-muted dark:text-white/45">
+                    {coach.stats.projection_usable ? t.coach.projectedNote : t.coach.loggedOnlyNote}
+                    {' · '}
+                    {tReplace(t.coach.daysLogged, { n: String(coach.stats.days_logged) })}
+                  </p>
+                  <p className="mt-1 text-sm text-brand-ink dark:text-white/80">
+                    {coach.stats.projection_usable && coach.stats.projected_daily_calories != null
+                      ? coach.stats.projected_daily_calories
+                      : coach.stats.avg_daily_calories}{' '}
+                    kcal · P{' '}
+                    {coach.stats.avg_daily_protein}g · C {coach.stats.avg_daily_carbs}g · F{' '}
+                    {coach.stats.avg_daily_fat}g
+                  </p>
+                </div>
               </div>
             )}
           </div>

@@ -169,6 +169,13 @@ export const translations = {
       week8: '8 weeks',
       avgIntake: 'Recent average intake',
       daysLogged: '{n} days logged',
+      confidenceLow:
+        'Only part of the day is logged (e.g. one meal). That is not treated as your full daily calories — weight outlook waits for a fuller day.',
+      confidenceMedium:
+        'Based on {n} fuller day(s). Keep logging 2+ meals (or most of your calorie goal) for a steadier forecast.',
+      confidenceHigh: 'Based on {n} fuller logged days.',
+      loggedOnlyNote: 'Logged so far (not a full-day total)',
+      projectedNote: 'Daily average used for outlook',
       directionLose: 'Likely down',
       directionGain: 'Likely up',
       directionMaintain: 'Likely stable',
@@ -443,6 +450,13 @@ export const translations = {
       week8: '8주',
       avgIntake: '최근 평균 섭취',
       daysLogged: '{n}일 기록',
+      confidenceLow:
+        '하루 일부만 기록된 상태예요(예: 아침 한 끼). 그걸 하루 전체 칼로리로 보지 않아요 — 하루가 더 채워지면 체중 전망을 냅니다.',
+      confidenceMedium:
+        '비교적 채워진 {n}일 기록 기준이에요. 하루 2끼 이상(또는 목표 칼로리의 대부분)을 이어 가면 전망이 더 안정적이에요.',
+      confidenceHigh: '채워진 기록 {n}일 기준이에요.',
+      loggedOnlyNote: '지금까지 기록분 (하루 전체 아님)',
+      projectedNote: '전망에 쓰는 하루 평균',
       directionLose: '감소 경향',
       directionGain: '증가 경향',
       directionMaintain: '유지 경향',
