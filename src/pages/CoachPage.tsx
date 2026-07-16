@@ -4,7 +4,7 @@ import { CoachWaitPanel } from '@/components/CoachWaitPanel'
 import { ScoreGauge, scoreBandKey } from '@/components/ScoreGauge'
 import { tReplace } from '@/i18n/translations'
 import { useI18n } from '@/hooks/useI18n'
-import { fetchCoachAdvice, generateShareCard } from '@/services/coach'
+import { fetchCoachAdvice, generateShareCard, SHARE_CARD_DESIGN } from '@/services/coach'
 import { fetchMealRecommendations } from '@/services/recommend'
 import { useAppStore } from '@/store/useAppStore'
 import { sumNutrition, todayMeals } from '@/utils/nutrition'
@@ -85,6 +85,16 @@ export function CoachPage() {
     if (!cardLoading) return
     cardWaitRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [cardLoading])
+
+  // Drop stale previews when share-card layout version changes (after deploys).
+  useEffect(() => {
+    const key = 'calai_share_card_design'
+    const prev = sessionStorage.getItem(key)
+    if (prev !== String(SHARE_CARD_DESIGN)) {
+      setCardUrl(null)
+      sessionStorage.setItem(key, String(SHARE_CARD_DESIGN))
+    }
+  }, [])
 
   async function runCoach() {
     setLoading(true)
@@ -194,6 +204,9 @@ export function CoachPage() {
           </button>
         )}
       </div>
+      {coach && !cardUrl && !cardLoading && (
+        <p className="text-xs text-brand-muted dark:text-white/45">{t.coach.cardRegenHint}</p>
+      )}
 
       <div className="rounded-2xl bg-brand-green-soft/70 px-4 py-3 text-sm text-brand-ink dark:bg-brand-green/15 dark:text-white/80">
         {tReplace(t.dashboard.remaining, { n: String(Math.max(0, remaining.calories)) })}
@@ -502,7 +515,7 @@ export function CoachPage() {
           <img
             src={cardUrl}
             alt="Share card"
-            className="mx-auto max-h-[min(72vh,640px)] w-auto max-w-full rounded-2xl shadow-soft"
+            className="mx-auto aspect-square max-h-[min(70vh,420px)] w-auto max-w-full rounded-2xl shadow-soft"
           />
           <a href={cardUrl} download="my-cal-ai-plus-card.png" className="btn-secondary inline-flex">
             {t.coach.download}

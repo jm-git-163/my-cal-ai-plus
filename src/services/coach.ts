@@ -1,6 +1,8 @@
 import type { CoachResult, DailyGoals, MealEntry } from '@/types'
 import type { Locale } from '@/i18n/translations'
-import { clipShareText, renderShareCard } from '@/utils/shareCard'
+import { clipShareText, renderShareCard, SHARE_CARD_DESIGN } from '@/utils/shareCard'
+
+export { SHARE_CARD_DESIGN }
 
 export async function fetchCoachAdvice(params: {
   meals: MealEntry[]
@@ -53,8 +55,8 @@ export async function generateShareCard(params: {
   score?: number
 }): Promise<string> {
   return renderShareCard({
-    headline: clipShareText(params.headline, 72),
-    subtitle: clipShareText(params.subtitle, 110),
+    headline: clipShareText(params.headline, 48),
+    subtitle: clipShareText(params.subtitle, 72),
     score: params.score,
     locale: params.locale,
   })
