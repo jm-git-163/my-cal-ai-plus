@@ -104,16 +104,15 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
     }
   }
 
-  async function recalculate() {
+  async function recalculateWithNote(note: string) {
     if (!onUpdate || !meal.imageDataUrl) return
-    const note = correctionNote.trim()
-    if (!note) {
-      setError(t.meal.reanalyzeNeedNote)
-      return
-    }
     setRefining(true)
     setError(null)
     try {
+      const nameHint =
+        draft.food.trim() && draft.food.trim() !== meal.food
+          ? `Correct food name: ${draft.food.trim()}`
+          : ''
       const prior = `Prior estimate to revise: ${meal.food} · ${meal.calories}kcal · P${meal.protein}/C${meal.carbs}/F${meal.fat} · ${meal.grams}g`
       const nutrition = await analyzeFoodImage({
         image: meal.imageDataUrl,
@@ -121,7 +120,7 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
         currentWeightKg: settings.currentWeightKg,
         goalWeightKg: settings.goalWeightKg,
         calorieGoal: settings.goals.calories,
-        userCorrection: `${note}\n${prior}`,
+        userCorrection: [note, nameHint, prior].filter(Boolean).join('\n'),
       })
       await onUpdate(meal.id, {
         food: nutrition.food,
@@ -150,6 +149,17 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
     } finally {
       setRefining(false)
     }
+  }
+
+  /** One finish action: note → AI recalc; otherwise save linked manual edits. */
+  async function finishEdit() {
+    if (!onUpdate || saving || refining) return
+    const note = correctionNote.trim()
+    if (note && canRecalc) {
+      await recalculateWithNote(note)
+      return
+    }
+    await saveManual()
   }
 
   return (
@@ -395,6 +405,12 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
                     rows={3}
                     placeholder={t.meal.correctNotePlaceholder}
                     className="field-input min-h-[4.5rem] resize-y"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                        e.preventDefault()
+                        void finishEdit()
+                      }
+                    }}
                   />
                 </label>
               )}
@@ -405,7 +421,7 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
                 </p>
               )}
 
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex gap-2">
                 <button
                   type="button"
                   className="btn-secondary"
@@ -418,22 +434,11 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
                   type="button"
                   className="btn-primary flex-1"
                   disabled={saving || refining}
-                  onClick={() => void saveManual()}
+                  onClick={() => void finishEdit()}
                 >
-                  {saving ? t.meal.saving : t.meal.saveEdits}
+                  {saving || refining ? t.meal.saving : t.meal.editDone}
                 </button>
               </div>
-
-              {canRecalc && (
-                <button
-                  type="button"
-                  className="btn-secondary w-full"
-                  disabled={saving || refining || !correctionNote.trim()}
-                  onClick={() => void recalculate()}
-                >
-                  {refining ? t.meal.reanalyzing : t.meal.reanalyze}
-                </button>
-              )}
             </div>
           )}
         </div>
