@@ -14,30 +14,25 @@ export function validateImageFile(file: File): string | null {
 
 export async function analyzeFoodImage(params: {
   image: string
+  /** @deprecated Ignored — single resized JPEG is enough and much faster. */
   preprocess?: string
   locale?: 'ko' | 'en'
   currentWeightKg?: number
   goalWeightKg?: number
   calorieGoal?: number
+  /** What the photo alone missed or got wrong (flavor, hidden sides, etc.). */
+  userCorrection?: string
 }): Promise<NutritionResult> {
-  // One solid image is enough for most meals; dual images inflate latency.
-  const primary = params.image
-  const secondary =
-    params.preprocess && params.preprocess !== params.image ? params.preprocess : undefined
-  const images = [primary, secondary].filter(
-    (u): u is string => typeof u === 'string' && u.length > 0,
-  )
-
   const res = await fetch('/api/vision', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      images,
-      image: primary,
+      image: params.image,
       locale: params.locale ?? 'ko',
       currentWeightKg: params.currentWeightKg,
       goalWeightKg: params.goalWeightKg,
       calorieGoal: params.calorieGoal,
+      userCorrection: params.userCorrection?.trim() || undefined,
     }),
   })
 

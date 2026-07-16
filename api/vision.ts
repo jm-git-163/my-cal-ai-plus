@@ -1,5 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getModel, getOpenAI } from '../lib/openai.js'
+import {
+  getOpenAI,
+  getVisionModel,
+  getVisionReasoningEffort,
+  supportsReasoningEffort,
+} from '../lib/openai.js'
 
 export type VisionDetail = 'low' | 'high' | 'original' | 'auto'
 
@@ -153,13 +158,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       currentWeightKg?: number
       goalWeightKg?: number
       calorieGoal?: number
+      /** User fix for what the photo alone misses (flavor, hidden veg, etc.). */
+      userCorrection?: string
     }
 
-    // Single-pass + first image only — dual high-detail passes were too slow on mobile.
+    // Single-pass + one image — dual high-detail passes were too slow on mobile.
     const detail = 'high' as VisionDetail
     const twoPass = false
     const lang = body.locale === 'en' ? 'English' : 'Korean'
-    const model = getModel()
+    const model = getVisionModel()
     const mode = weightMode(body.currentWeightKg, body.goalWeightKg)
 
     const candidates = [
@@ -260,23 +267,29 @@ Language for strings: ${lang}.`,
       calorieGoal: body.calorieGoal ?? null,
     }
 
+    const userCorrection =
+      typeof body.userCorrection === 'string' ? body.userCorrection.trim().slice(0, 600) : ''
+
     const pass2 = await client.responses.create({
       model,
-      instructions: `You are a nutrition vision expert (pass ${twoPass ? '2/2' : '1'}) for My Cal AI Plus.
-Return structured nutrition with REQUIRED uncertainty fields:
-- portionBasis: visual reference used for grams
-- assumptions: 2-5 short assumptions
-- fieldConfidence: 0-1 per field (food, grams, calories, protein, fat, carbs)
-- overall confidence 0-1
-- goalImpact: compare this meal to user's weight goal mode (${mode}).
-  help = supports *sustainable* goal (protein-forward, reasonable portions).
-  caution = hinders goal OR is empty calories / very low protein for a main meal OR encourages crash restriction.
-  During lose: low-calorie alone is NOT automatically "help" — prioritize protein + satiety. Never praise starving.
-  neutral = mixed/insufficient context.
-  Message in ${lang}, practical and non-medical.
-Do NOT give medical advice. Counts/portions are approximate.
-All user-facing strings in ${lang}.
-${twoPass ? 'Use pass-1 JSON as prior; refine numbers but keep/improve uncertainty honesty.' : ''}`,
+      ...(supportsReasoningEffort(model)
+        ? { reasoning: { effort: getVisionReasoningEffort() } }
+        : {}),
+      instructions: `Nutrition vision for My Cal AI Plus. Structured estimates only — not medical advice.
+All user-facing strings in ${lang}. Be concrete and terse.
+
+Required:
+- Identify foods + portionBasis (plate/utensil/hand/label).
+- assumptions: 2–4 short caveats (oil, sauce, cooking).
+- fieldConfidence 0–1 per field; overall confidence 0–1.
+- goalImpact vs weight mode (${mode}): help=sustainable (protein+satiety), caution=empty calories / very low protein main / crash restriction, neutral=mixed. Never praise starving on lose.
+
+Prefer accurate macros over long tips (tip ≤1 short sentence).
+${
+  userCorrection
+    ? `USER CORRECTION (trust over visual guess when they conflict — e.g. syrup flavor, hidden veg under rice, brand/size the photo misses): apply it and recount macros.`
+    : ''
+}`,
       text: {
         format: {
           type: 'json_schema',
@@ -293,13 +306,12 @@ ${twoPass ? 'Use pass-1 JSON as prior; refine numbers but keep/improve uncertain
               type: 'input_text',
               text: [
                 twoPass && pass1Context ? `Pass-1 prior JSON:\n${pass1Context}` : '',
-                `User goal context JSON:\n${JSON.stringify(goalCtx)}`,
-                unique.length > 1
-                  ? 'Image 1=original, Image 2=preprocess. Estimate nutrition with fieldConfidence + assumptions.'
-                  : 'Estimate nutrition with fieldConfidence + assumptions.',
+                `Goals: ${JSON.stringify(goalCtx)}`,
+                userCorrection ? `User correction (must apply):\n${userCorrection}` : '',
+                'Estimate nutrition with fieldConfidence + assumptions from this meal photo.',
               ]
                 .filter(Boolean)
-                .join('\n\n'),
+                .join('\n'),
             },
             ...imageContent,
           ],

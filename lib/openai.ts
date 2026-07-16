@@ -14,6 +14,15 @@ export function getModel() {
 }
 
 /**
+ * Meal photo analysis model.
+ * Prefer OPENAI_VISION_MODEL; else OPENAI_MODEL; default gpt-4.1
+ * (strong vision, much lower latency than frontier reasoning models).
+ */
+export function getVisionModel() {
+  return process.env.OPENAI_VISION_MODEL || process.env.OPENAI_MODEL || 'gpt-4.1'
+}
+
+/**
  * Coach / “지금 뭐먹지” — speed over frontier quality.
  * Default gpt-4.1-mini (does NOT fall back to OPENAI_MODEL, which is often slow).
  */
@@ -32,4 +41,12 @@ export function getFastReasoningEffort(): 'minimal' | 'low' | 'medium' | 'high' 
   if (raw === 'none' || raw === 'minimal') return 'minimal'
   if (raw === 'low' || raw === 'medium' || raw === 'high') return raw
   return 'minimal'
+}
+
+/** Vision on GPT-5: low keeps portion math solid without long chain-of-thought. */
+export function getVisionReasoningEffort(): 'minimal' | 'low' | 'medium' | 'high' {
+  const raw = (process.env.OPENAI_VISION_REASONING || 'low').toLowerCase()
+  if (raw === 'none' || raw === 'minimal') return 'minimal'
+  if (raw === 'low' || raw === 'medium' || raw === 'high') return raw
+  return 'low'
 }

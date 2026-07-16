@@ -313,6 +313,40 @@ html.dark .coach-wait__bar {
   animation: coach-shimmer 1.35s ease-in-out infinite;
 }
 
+.scan-wait-beam {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.scan-wait-beam::after {
+  content: '';
+  position: absolute;
+  left: -20%;
+  top: 0;
+  width: 38%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 40%,
+    rgba(45, 184, 122, 0.28) 50%,
+    rgba(255, 255, 255, 0.08) 60%,
+    transparent 100%
+  );
+  animation: scan-beam 2.2s ease-in-out infinite;
+}
+
+@keyframes scan-beam {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-enter,
   .scan-pulse,
@@ -320,7 +354,8 @@ html.dark .coach-wait__bar {
   .coach-wait__core,
   .coach-wait__ring,
   .coach-wait__spark,
-  .coach-wait__bar-fill {
+  .coach-wait__bar-fill,
+  .scan-wait-beam::after {
     animation: none;
   }
 }
