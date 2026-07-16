@@ -719,6 +719,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       heightCm?: number
       age?: number
       bmr?: number
+      todayTotals?: {
+        calories?: number
+        protein?: number
+        carbs?: number
+        fat?: number
+      }
     }
 
     const meals = Array.isArray(body.meals) ? body.meals.slice(0, 40) : []
@@ -731,6 +737,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const currentWeightKg = body.currentWeightKg
     const goalWeightKg = body.goalWeightKg
     const mode = weightMode(currentWeightKg, goalWeightKg)
+    const todayTotals = {
+      calories: Math.round(Number(body.todayTotals?.calories) || 0),
+      protein: Math.round((Number(body.todayTotals?.protein) || 0) * 10) / 10,
+      carbs: Math.round((Number(body.todayTotals?.carbs) || 0) * 10) / 10,
+      fat: Math.round((Number(body.todayTotals?.fat) || 0) * 10) / 10,
+    }
     const bmr = Number(body.bmr) || 0
     const safeFloor =
       bmr > 0
@@ -749,10 +761,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? trend.projected_daily_protein - goalProtein
         : null
 
+    const projectedCal = trend.projected_daily_calories ?? trend.avg_daily_calories
+    const projectedPro = trend.projected_daily_protein ?? trend.avg_daily_protein
+    // Never tell the user they are "under" if today's actual intake is already over goal.
     const intakeCal =
-      trend.projected_daily_calories ?? trend.avg_daily_calories
+      goalCalories > 0 && todayTotals.calories > goalCalories ? todayTotals.calories : projectedCal
     const intakePro =
-      trend.projected_daily_protein ?? trend.avg_daily_protein
+      todayTotals.protein > projectedPro ? todayTotals.protein : projectedPro
     const healthBand = intakeHealthBand(intakeCal, goalCalories, safeFloor)
     const proteinBand = proteinAdequacy(intakePro, goalProtein)
 

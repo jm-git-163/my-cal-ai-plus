@@ -285,6 +285,12 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
 
           {!editing && !refining ? (
             <>
+              {onUpdate && (
+                <button type="button" className="btn-secondary w-full" onClick={startEdit}>
+                  {t.meal.edit}
+                </button>
+              )}
+
               {meal.grams > 0 && (
                 <p className="tabular text-xs text-brand-muted dark:text-white/55">
                   {t.meal.portion}: {meal.grams}g
@@ -357,11 +363,6 @@ export function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
                 <p className="text-sm text-brand-muted dark:text-white/55">{meal.food}</p>
               )}
 
-              {onUpdate && (
-                <button type="button" className="btn-secondary w-full" onClick={startEdit}>
-                  {t.meal.edit}
-                </button>
-              )}
             </>
           ) : editing && !refining ? (
             <div className="space-y-3">

@@ -97,6 +97,7 @@ export function CoachPage() {
           settings.age,
           settings.sex,
         ),
+        todayTotals,
       })
       setCoach(result)
       setResultLocale(locale)

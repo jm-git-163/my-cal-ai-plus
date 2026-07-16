@@ -12,6 +12,12 @@ export async function fetchCoachAdvice(params: {
   heightCm?: number
   age?: number
   bmr?: number
+  todayTotals?: {
+    calories: number
+    protein: number
+    carbs: number
+    fat: number
+  }
 }): Promise<CoachResult> {
   const res = await fetch('/api/coach', {
     method: 'POST',
@@ -39,6 +45,7 @@ export async function fetchCoachAdvice(params: {
       heightCm: params.heightCm,
       age: params.age,
       bmr: params.bmr,
+      todayTotals: params.todayTotals,
       locale: params.locale,
       name: params.name,
     }),
