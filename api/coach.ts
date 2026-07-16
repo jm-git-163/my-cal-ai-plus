@@ -96,6 +96,11 @@ const SLOT_GOAL_SHARE: Record<(typeof MAIN_SLOTS)[number], number> = {
   dinner: 0.4,
 }
 
+function avg(nums: number[]): number {
+  if (nums.length === 0) return 0
+  return nums.reduce((s, n) => s + n, 0) / nums.length
+}
+
 function normalizeMealType(raw?: string): string {
   const t = (raw || '').toLowerCase()
   if (t.includes('break') || t.includes('아침')) return 'breakfast'
