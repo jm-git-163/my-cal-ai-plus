@@ -6,6 +6,7 @@ export function HistoryPage() {
   const { t, locale } = useI18n()
   const meals = useAppStore((s) => s.meals)
   const removeMeal = useAppStore((s) => s.removeMeal)
+  const updateMeal = useAppStore((s) => s.updateMeal)
 
   const grouped = meals.reduce<Record<string, typeof meals>>((acc, meal) => {
     const key = new Date(meal.createdAt).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US', {
@@ -33,7 +34,7 @@ export function HistoryPage() {
           <section key={day} className="space-y-3">
             <h2 className="font-display text-lg font-semibold text-brand-ink dark:text-white">{day}</h2>
             {dayMeals.map((m) => (
-              <MealCard key={m.id} meal={m} onDelete={removeMeal} />
+              <MealCard key={m.id} meal={m} onDelete={removeMeal} onUpdate={updateMeal} />
             ))}
           </section>
         ))

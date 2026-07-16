@@ -12,6 +12,7 @@ export function DashboardPage() {
   const meals = useAppStore((s) => s.meals)
   const settings = useAppStore((s) => s.settings)
   const removeMeal = useAppStore((s) => s.removeMeal)
+  const updateMeal = useAppStore((s) => s.updateMeal)
   const theme = settings.theme
 
   const today = useMemo(() => todayMeals(meals), [meals])
@@ -132,7 +133,7 @@ export function DashboardPage() {
         ) : (
           <div className="space-y-2.5">
             {today.map((m) => (
-              <MealCard key={m.id} meal={m} onDelete={removeMeal} />
+              <MealCard key={m.id} meal={m} onDelete={removeMeal} onUpdate={updateMeal} />
             ))}
           </div>
         )}

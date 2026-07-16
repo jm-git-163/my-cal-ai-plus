@@ -32,9 +32,6 @@ export function ScanPage() {
   const [saving, setSaving] = useState(false)
   const [savedId, setSavedId] = useState<string | null>(null)
   const [saveNote, setSaveNote] = useState<string | null>(null)
-  const [showCorrect, setShowCorrect] = useState(false)
-  const [correctionNote, setCorrectionNote] = useState('')
-  const [refining, setRefining] = useState(false)
 
   // Keep meal type in sync after auto-save
   useEffect(() => {
@@ -44,7 +41,7 @@ export function ScanPage() {
     })
   }, [mealType, savedId, updateMeal])
 
-  const busy = stage === 'preprocessing' || stage === 'analyzing' || refining
+  const busy = stage === 'preprocessing' || stage === 'analyzing'
 
   // Discourage accidental leave while analysis is in flight.
   useEffect(() => {
@@ -74,9 +71,6 @@ export function ScanPage() {
     setResult(null)
     setSavedId(null)
     setSaveNote(null)
-    setShowCorrect(false)
-    setCorrectionNote('')
-    setRefining(false)
     setStage('preprocessing')
 
     try {
@@ -131,60 +125,6 @@ export function ScanPage() {
     }
   }
 
-  async function onReanalyzeWithCorrection() {
-    const note = correctionNote.trim()
-    if (!note) {
-      setError(t.scan.reanalyzeNeedNote)
-      return
-    }
-    const image = processed ?? preview
-    if (!image || !result) return
-
-    setError(null)
-    setRefining(true)
-    try {
-      const prior = `Prior estimate to revise: ${result.food} · ${result.calories}kcal · P${result.protein}/C${result.carbs}/F${result.fat} · ${result.grams}g`
-      const nutrition = await analyzeFoodImage({
-        image,
-        locale,
-        currentWeightKg: settings.currentWeightKg,
-        goalWeightKg: settings.goalWeightKg,
-        calorieGoal: settings.goals.calories,
-        userCorrection: `${note}\n${prior}`,
-      })
-      setResult(nutrition)
-      setShowCorrect(false)
-      setCorrectionNote('')
-      if (savedId) {
-        await updateMeal(savedId, {
-          food: nutrition.food,
-          grams: nutrition.grams,
-          calories: nutrition.calories,
-          protein: nutrition.protein,
-          fat: nutrition.fat,
-          carbs: nutrition.carbs,
-          confidence: nutrition.confidence,
-          ingredients: nutrition.ingredients,
-          tip: nutrition.tip,
-          is_unclear: nutrition.is_unclear,
-          items: nutrition.items,
-          visible_text: nutrition.visible_text,
-          image_quality: nutrition.image_quality,
-          portion_note: nutrition.portion_note,
-          portionBasis: nutrition.portionBasis,
-          assumptions: nutrition.assumptions,
-          fieldConfidence: nutrition.fieldConfidence,
-          goalImpact: nutrition.goalImpact,
-        })
-        setSaveNote(t.scan.correctedSaved)
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t.scan.analysisFailed)
-    } finally {
-      setRefining(false)
-    }
-  }
-
   async function onSaveAndHome() {
     if (!result) return
     if (savedId) {
@@ -219,16 +159,7 @@ export function ScanPage() {
     setError(null)
     setSavedId(null)
     setSaveNote(null)
-    setShowCorrect(false)
-    setCorrectionNote('')
-    setRefining(false)
     if (inputRef.current) inputRef.current.value = ''
-  }
-
-  function closeCorrect() {
-    setShowCorrect(false)
-    setCorrectionNote('')
-    setError(null)
   }
 
   const impact = result?.goalImpact
@@ -254,7 +185,7 @@ export function ScanPage() {
       ? t.scan.saving
       : t.scan.saveQuick
 
-  const waitPanelBusy = stage === 'preprocessing' || stage === 'analyzing' || refining
+  const waitPanelBusy = stage === 'preprocessing' || stage === 'analyzing'
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-4 md:max-w-3xl md:space-y-5 pb-36 md:pb-0">
@@ -309,11 +240,7 @@ export function ScanPage() {
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
                 <div className="scan-wait-beam" aria-hidden />
                 <p className="absolute inset-x-0 bottom-0 p-4 text-xs font-semibold tracking-wide text-white/85">
-                  {refining
-                    ? t.scan.reanalyzing
-                    : stage === 'preprocessing'
-                      ? t.scan.preprocessing
-                      : t.scan.analyzing}
+                  {stage === 'preprocessing' ? t.scan.preprocessing : t.scan.analyzing}
                 </p>
               </>
             )}
@@ -322,10 +249,9 @@ export function ScanPage() {
 
         {busy && (
           <CoachWaitPanel
-            key={refining ? 'refine' : 'first'}
             mode="scan"
-            title={refining ? t.scan.waitTitleRefine : t.scan.waitTitle}
-            stages={refining ? t.scan.waitStagesRefine : t.scan.waitStages}
+            title={t.scan.waitTitle}
+            stages={t.scan.waitStages}
             tips={t.scan.waitTips}
             almost={t.scan.waitAlmost}
             hint={t.scan.waitHint}
@@ -346,7 +272,7 @@ export function ScanPage() {
           </div>
         )}
 
-        {result && stage === 'result' && !refining && (
+        {result && stage === 'result' && (
           <div className="space-y-4">
             <div className="rounded-[22px] bg-gradient-to-br from-brand-green-soft to-white p-5 dark:from-brand-green/20 dark:to-white/5">
               <p className="text-xs font-bold uppercase tracking-wide text-brand-green">{result.food}</p>
@@ -468,50 +394,9 @@ export function ScanPage() {
               )}
             </div>
 
-            {!showCorrect ? (
-              <button
-                type="button"
-                className="btn-secondary w-full"
-                onClick={() => setShowCorrect(true)}
-              >
-                {t.scan.correctToggle}
-              </button>
-            ) : (
-              <div className="space-y-3 rounded-[22px] border border-brand-orange/35 bg-brand-orange-soft/50 p-4 dark:border-brand-orange/40 dark:bg-brand-orange/15">
-                <div>
-                  <p className="font-display text-base font-semibold text-brand-ink dark:text-white">
-                    {t.scan.correctTitle}
-                  </p>
-                  <p className="mt-1 text-sm text-brand-muted dark:text-white/55">{t.scan.correctHint}</p>
-                </div>
-
-                <label className="block text-sm font-medium text-brand-ink dark:text-white">
-                  {t.scan.correctNote}
-                  <textarea
-                    value={correctionNote}
-                    onChange={(e) => setCorrectionNote(e.target.value.slice(0, 600))}
-                    rows={3}
-                    placeholder={t.scan.correctNotePlaceholder}
-                    className="field-input min-h-[5.5rem] resize-y"
-                    autoFocus
-                  />
-                </label>
-
-                <div className="flex gap-2">
-                  <button type="button" className="btn-secondary" onClick={closeCorrect}>
-                    {t.scan.correctCancel}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-primary flex-1"
-                    disabled={refining || !correctionNote.trim()}
-                    onClick={() => void onReanalyzeWithCorrection()}
-                  >
-                    {refining ? t.scan.reanalyzing : t.scan.reanalyze}
-                  </button>
-                </div>
-              </div>
-            )}
+            <p className="rounded-2xl border border-black/5 bg-black/[0.02] px-3 py-2.5 text-sm text-brand-muted dark:border-white/10 dark:bg-white/5 dark:text-white/55">
+              {t.scan.editLaterHint}
+            </p>
 
             <label className="block text-sm font-medium text-brand-ink dark:text-white">
               {t.scan.mealType}
@@ -531,12 +416,12 @@ export function ScanPage() {
               <button
                 type="button"
                 className="btn-primary flex-1"
-                disabled={saving || refining}
+                disabled={saving}
                 onClick={() => void onSaveAndHome()}
               >
                 {primaryLabel}
               </button>
-              <button type="button" className="btn-secondary" onClick={reset} disabled={refining}>
+              <button type="button" className="btn-secondary" onClick={reset}>
                 {t.scan.scanAnother}
               </button>
             </div>
@@ -550,7 +435,7 @@ export function ScanPage() {
         )}
       </div>
 
-      {result && stage === 'result' && !refining && (
+      {result && stage === 'result' && (
         <div className="fixed inset-x-0 bottom-[4.75rem] z-30 border-t border-brand-ink/10 bg-[#EEF3F0]/95 px-4 py-3 shadow-[0_-4px_16px_rgba(18,21,28,0.06)] backdrop-blur-xl dark:border-white/10 dark:bg-[#10161c]/95 md:hidden safe-bottom">
           <div className="mx-auto flex max-w-lg gap-2">
             <button type="button" className="btn-secondary" onClick={reset}>
