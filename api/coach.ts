@@ -126,6 +126,70 @@ function weightMode(current?: number, goal?: number): 'lose' | 'gain' | 'maintai
   return 'maintain'
 }
 
+/** Muscle outlook must follow protein vs goal — never optimistic when short. */
+function enforceMuscleFromProtein<T extends {
+  muscle_trend: { direction: string; estimate_4w: string; explanation: string }
+  advice: string
+  focus: string[]
+}>(
+  parsed: T,
+  proteinG: number,
+  goalProtein: number,
+  lang: string,
+): T {
+  if (goalProtein <= 0 || proteinG <= 0) return parsed
+  const ko = lang !== 'English'
+  const ratio = proteinG / goalProtein
+  const gap = Math.round(goalProtein - proteinG)
+
+  if (ratio < 0.85) {
+    const tag = ko ? '단백질 보충' : 'More protein'
+    const focus = [tag, ...(parsed.focus || [])].filter(
+      (v, i, a) => a.findIndex((x) => x.toLowerCase() === v.toLowerCase()) === i,
+    ).slice(0, 4)
+    return {
+      ...parsed,
+      focus,
+      advice: ko
+        ? `단백질 목표보다 약 ${gap}g 부족해요. 끼니마다 살코기·계란·두부·그릭요거트를 더 챙기세요.`
+        : `About ${gap}g under protein goal — add lean meat, eggs, tofu, or Greek yogurt each meal.`,
+      muscle_trend: {
+        direction: 'decrease',
+        estimate_4w: ko ? '단백질 부족 시 감소 위험' : 'Loss risk if protein stays low',
+        explanation: ko
+          ? `추정 단백질 약 ${Math.round(proteinG)}g/일(목표 ${goalProtein}g). 이 추세면 근육 유지가 어렵습니다. 단백질을 우선하세요.`
+          : `~${Math.round(proteinG)}g protein/day vs ${goalProtein}g goal. This trend risks muscle loss — prioritize protein.`,
+      },
+    }
+  }
+
+  if (ratio < 0.95) {
+    return {
+      ...parsed,
+      muscle_trend: {
+        direction: 'maintain',
+        estimate_4w: parsed.muscle_trend?.estimate_4w || (ko ? '경계선' : 'Borderline'),
+        explanation: ko
+          ? `단백질이 목표에 살짝 못 미쳐요(~${Math.round(proteinG)}g/${goalProtein}g). 유지하려면 매 끼 단백질을 조금 더.`
+          : `Protein slightly under goal (~${Math.round(proteinG)}g/${goalProtein}g). Add a bit each meal to hold muscle.`,
+      },
+    }
+  }
+
+  // Near/above goal: keep AI text but never claim "increase" on low evidence without surplus.
+  if (ratio < 1.05 && parsed.muscle_trend?.direction === 'increase') {
+    return {
+      ...parsed,
+      muscle_trend: {
+        ...parsed.muscle_trend,
+        direction: 'maintain',
+      },
+    }
+  }
+
+  return parsed
+}
+
 /**
  * Goal adherence 0–100 (NOT “eat more = better”).
  * For weight-loss goals, scoring high means staying near the deficit calorie target.
@@ -189,7 +253,9 @@ function computeGoalAdherenceScore(
     }
   }
 
-  let score = 0.62 * calScore + 0.38 * proteinScore
+  // Protein weighted higher — especially critical when cutting calories.
+  const pWeight = mode === 'lose' ? 0.48 : 0.4
+  let score = (1 - pWeight) * calScore + pWeight * proteinScore
   if (trend.confidence === 'low') score = score * 0.82 + 50 * 0.18
   else if (trend.confidence === 'medium') score = score * 0.92 + 50 * 0.08
 
@@ -283,8 +349,10 @@ function buildTrendStats(meals: MealInput[], goalCalories: number, goalProtein: 
         fillCal += histCal
         fillProtein += histProtein
       } else if (goalCalories > 0) {
+        // Calorie fill from goal shares is OK for weight outlook (low confidence).
+        // Do NOT invent protein from goals — that falsely "maintains muscle" when
+        // the user only logged a light snack (e.g. yogurt + nuts).
         fillCal += Math.round(goalCalories * SLOT_GOAL_SHARE[slot])
-        fillProtein += goalProtein > 0 ? Math.round(goalProtein * SLOT_GOAL_SHARE[slot] * 10) / 10 : 0
       }
     }
     // If user often logs snacks, add typical snack once when none logged that day.
@@ -509,14 +577,20 @@ User strings in ${lang}. Be terse.
 
 CRITICAL — calorie math:
 - Days with NO photos are excluded (never treat as 0 kcal).
-- avg_daily_calories = logged-only. NEVER use alone for kg forecasts.
-- projected_daily_calories fills missing slots from history/goal shares. USE THIS for weight (~7700 kcal ≈ 1 kg) when projection_usable=true.
+- avg_daily_* = logged-only. NEVER use alone for kg forecasts.
+- projected_daily_calories may fill missing slots from history/goal shares. USE for weight (~7700 kcal ≈ 1 kg) when projection_usable=true.
+- projected_daily_protein fills ONLY from real meal history — never invent protein from goals.
 - NEVER invent daily intake as (one meal × 2 or 3).
-- weight_goal_mode=${mode}: lose means user's calorie GOAL is already a deficit target — hitting that goal supports fat loss.
-- goal_adherence_score is precomputed (0–100): how close intake is to THEIR goals. For lose, high score = near deficit target (NOT “eat maintenance”). Echo this meaning; do not imply 100 = no weight loss.
-- Output field "score" MUST equal goal_adherence_score (${adherenceScore}).
-- If fills_unlogged_meals=true: mention estimates for unlogged meals; wider ranges when confidence=low.
+- weight_goal_mode=${mode}: lose means calorie GOAL is already a deficit — hitting it supports fat loss.
+- goal_adherence_score is precomputed (0–100). Output "score" MUST equal ${adherenceScore}.
+- If fills_unlogged_meals=true: mention estimates; wider ranges when confidence=low.
 - If projection_usable=false: logging needed.
+
+CRITICAL — protein / muscle:
+- muscle_trend MUST follow protein_gap_vs_goal / projected_daily_protein vs goals.protein.
+- If protein clearly under goal (gap negative, esp. <85% of goal): muscle_trend.direction="decrease"; say muscle retention is unlikely on this trend; put protein first in advice + focus.
+- A single light meal (yogurt, nuts, fruit) is NOT enough protein for the day — do NOT claim muscle maintain.
+- During weight loss, under-eating protein is worse than mild calorie underage — stress protein every time it's short.
 
 Fields: summary, advice≤100chars, focus 2-4 tags, score, predicted_goal_note,
 weight_trend, muscle_trend, energy_trend, outlook_2w/4w/8w, disclaimer.
@@ -563,6 +637,10 @@ Meal keys: f=food t=type c=kcal p/cb/ft=macros d=YYYY-MM-DD.`,
 
     if (!trend.projection_usable || trend.meal_count === 0) {
       parsed = enforceNoDataTrends(parsed, lang)
+    } else {
+      const proteinForMuscle =
+        trend.projected_daily_protein ?? trend.avg_daily_protein
+      parsed = enforceMuscleFromProtein(parsed, proteinForMuscle, goalProtein, lang)
     }
 
     return res.status(200).json({
