@@ -256,7 +256,7 @@ export async function renderShareCard(input: ShareCardInput): Promise<string> {
   )
   y += 80
 
-  // Hero score
+  // Hero score — ring + “n / 100” so scale is obvious
   if (score !== null) {
     const cx = W / 2
     const cy = y + 210
@@ -264,13 +264,20 @@ export async function renderShareCard(input: ShareCardInput): Promise<string> {
 
     ctx.textAlign = 'center'
     ctx.fillStyle = '#1A1F2C'
-    ctx.font = '700 120px Outfit, sans-serif'
-    ctx.fillText(String(score), cx, cy + 42)
+    ctx.font = '700 110px Outfit, sans-serif'
+    ctx.fillText(String(score), cx, cy + 28)
+    ctx.fillStyle = '#6B7280'
+    ctx.font = '600 36px Outfit, "Noto Sans KR", sans-serif'
+    ctx.fillText('/ 100', cx, cy + 78)
     ctx.fillStyle = '#22A06B'
     ctx.font = '600 28px "Noto Sans KR", "DM Sans", sans-serif'
-    ctx.fillText(locale === 'en' ? 'Nutrition score' : '영양 점수', cx, cy + 92)
+    ctx.fillText(
+      locale === 'en' ? `Nutrition score · ${score} of 100` : `영양 점수 · 100점 만점 중 ${score}점`,
+      cx,
+      cy + 128,
+    )
     ctx.textAlign = 'left'
-    y = cy + 230
+    y = cy + 260
   } else {
     y += 40
   }

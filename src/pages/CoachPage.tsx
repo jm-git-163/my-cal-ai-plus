@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CoachResult, MealRecommendResult } from '@/types'
 import { CoachWaitPanel } from '@/components/CoachWaitPanel'
+import { ScoreGauge, scoreBandKey } from '@/components/ScoreGauge'
 import { tReplace } from '@/i18n/translations'
 import { useI18n } from '@/hooks/useI18n'
 import { fetchCoachAdvice, generateShareCard } from '@/services/coach'
@@ -36,6 +37,17 @@ function directionTone(direction: string) {
     return 'bg-brand-blue-soft text-brand-blue dark:bg-brand-blue/20'
   }
   return 'bg-brand-green-soft text-brand-green dark:bg-brand-green/20'
+}
+
+function bandLabelFor(
+  t: ReturnType<typeof useI18n>['t'],
+  score: number,
+) {
+  const band = scoreBandKey(score)
+  if (band === 'great') return t.coach.scoreBandGreat
+  if (band === 'good') return t.coach.scoreBandGood
+  if (band === 'mid') return t.coach.scoreBandMid
+  return t.coach.scoreBandLow
 }
 
 export function CoachPage() {
@@ -327,16 +339,18 @@ export function CoachPage() {
       {coach && !loading && (
         <div className="space-y-4">
           <div className="glass-card space-y-4 p-5 sm:p-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div className="shrink-0">
-                <p className="text-nowrap-keep text-sm font-medium text-brand-muted dark:text-white/50">
-                  {t.coach.score}
+            <div className="flex flex-col gap-4">
+              <ScoreGauge
+                score={coach.score}
+                label={t.coach.score}
+                outOfLabel={tReplace(t.coach.scoreOutOf, { n: String(Math.round(coach.score)) })}
+                bandLabel={bandLabelFor(t, coach.score)}
+              />
+              {coach.predicted_goal_note && (
+                <p className="text-balance-ko rounded-2xl bg-black/[0.03] px-4 py-3 text-sm leading-relaxed text-brand-muted dark:bg-white/5 dark:text-white/55">
+                  {coach.predicted_goal_note}
                 </p>
-                <p className="tabular font-display text-4xl font-bold text-brand-green">{coach.score}</p>
-              </div>
-              <p className="min-w-0 flex-1 text-balance-ko text-sm leading-relaxed text-brand-muted sm:max-w-sm sm:text-right dark:text-white/55">
-                {coach.predicted_goal_note}
-              </p>
+              )}
             </div>
             <div className="text-balance-ko">
               <h2 className="font-display text-xl font-semibold leading-snug text-brand-ink dark:text-white">
