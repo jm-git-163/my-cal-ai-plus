@@ -164,7 +164,7 @@ export const translations = {
       ],
       correctTitle: 'Fix what looked wrong',
       correctHint:
-        'After reading the analysis above, edit the numbers yourself or describe the mistake so AI can re-estimate.',
+        'Review the analysis above first, then edit numbers or describe the mistake for a re-estimate.',
       foodName: 'Food name',
       correctNote: 'What did it get wrong?',
       correctNotePlaceholder:
@@ -492,7 +492,7 @@ export const translations = {
       ],
       correctTitle: '틀린·빠진 부분 고치기',
       correctHint:
-        '위에서 AI가 어떻게 봤는지 확인한 뒤, 숫자를 직접 고치거나 잘못을 짧게 적어 다시 추정하세요.',
+        '위 분석에서 AI가 뭘로 봤는지 확인한 다음, 숫자 수정이나 짧은 메모로 다시 추정하세요.',
       foodName: '음식 이름',
       correctNote: '잘못된 / 빠진 내용',
       correctNotePlaceholder:
