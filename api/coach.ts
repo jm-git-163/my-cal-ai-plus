@@ -299,22 +299,48 @@ function enforceBalancedCoaching<T extends {
   // Unsafe under already handled — leave that message.
   if (band === 'unsafe_under') return next
 
-  // On track: affirm balance; one gentle habit — don’t invent crises.
+  // On track: affirm balance; rotate gentle habits — not always protein.
   if (band === 'on_target' && (protein === 'ok' || protein === 'unknown')) {
+    const habit =
+      mode === 'lose'
+        ? ko
+          ? '채소·수분을 늘려 포만감을 챙기고, 근력 운동을 이어 가면 감량과 근육 모두에 좋아요.'
+          : 'Add veggies and fluids for satiety, and keep strength training — fat loss and muscle both benefit.'
+        : mode === 'gain'
+          ? ko
+            ? '운동 전후에 탄수화물+단백질을 조금씩 더해 근력 성장을 도와 보세요.'
+            : 'Nudge carbs + protein around training to support muscle gain.'
+          : ko
+            ? '채소·통곡·단백질이 고른 접시를 유지하고, 수면과 수분도 같이 챙기세요.'
+            : 'Keep a balanced plate (veg, whole grains, protein) plus sleep and hydration.'
     return {
       ...next,
       summary: ko
-        ? `칼로리·단백질이 목표에 잘 맞고 있어요`
-        : `Calories and protein are near your targets`,
+        ? `칼로리·영양이 목표에 잘 맞고 있어요`
+        : `Intake looks well aligned with your goals`,
       advice: ko
-        ? `지금 페이스를 유지하세요. 끼니마다 단백질을 챙기고, 야식·음료 칼로리만 조심하면 목표와 건강 모두에 좋아요.`
-        : `Keep this pace — solid protein each meal and watch late snacks/drinks for both goal and health.`,
+        ? `지금 페이스를 유지하세요. ${habit}`
+        : `Keep this pace. ${habit}`,
       predicted_goal_note: ko
-        ? `지속 가능한 적자/목표 근처예요. 급하게 더 줄이기보다 이 균형을 지키는 편이 유리합니다.`
-        : `You’re near a sustainable target — holding the balance beats cutting harder.`,
+        ? mode === 'lose'
+          ? `지속 가능한 목표 근처예요. 더 굶기보다 균형·근력 루틴을 지키는 편이 유리합니다.`
+          : `목표에 가까운 균형이에요. 급하게 바꾸기보다 이 리듬을 지키세요.`
+        : mode === 'lose'
+          ? `You’re near a sustainable target — holding balance and training beats cutting harder.`
+          : `You’re near a sustainable target — holding the balance beats sudden changes.`,
       focus: uniqFocus([
         ko ? '균형 유지' : 'Stay balanced',
-        ko ? '단백질 유지' : 'Keep protein',
+        mode === 'lose'
+          ? ko
+            ? '근력·포만감'
+            : 'Strength & satiety'
+          : mode === 'gain'
+            ? ko
+              ? '운동 연료'
+              : 'Fuel training'
+            : ko
+              ? '고른 접시'
+              : 'Balanced plate',
         ...(next.focus || []),
       ]),
       energy_trend: {
@@ -326,19 +352,20 @@ function enforceBalancedCoaching<T extends {
     }
   }
 
-  // Over target (esp. fat-loss): trim calories without sacrificing protein.
+  // Over target (esp. fat-loss): trim calories; mention protein only if short.
   if (band === 'over') {
     const overKcal = Math.max(0, calGap)
     if (mode === 'lose' || mode === 'maintain') {
+      const proteinShort = protein === 'low' || protein === 'critical'
       const tags = [
         ko ? '칼로리 조절' : 'Trim calories',
-        protein === 'low' || protein === 'critical'
+        proteinShort
           ? ko
             ? '단백질 유지'
             : 'Keep protein'
           : ko
-            ? '간식·음료 줄이기'
-            : 'Cut snacks/drinks',
+            ? '채소·포만감'
+            : 'Veg & satiety',
       ]
       return {
         ...next,
@@ -346,12 +373,12 @@ function enforceBalancedCoaching<T extends {
           ? `칼로리가 목표보다 약 ${overKcal}kcal 많아요`
           : `About ${overKcal} kcal over your calorie goal`,
         advice: ko
-          ? protein === 'low' || protein === 'critical'
+          ? proteinShort
             ? `열량은 줄이되 단백질은 지키세요. 밥·소스·간식·음료를 조금 줄이고, 살코기·계란·두부는 유지하세요.`
-            : `단백질은 유지한 채 간식·음료·소스·밥 양만 줄여 목표(${goalCalories}kcal)에 맞춰 보세요.`
-          : protein === 'low' || protein === 'critical'
+            : `간식·음료·소스·밥 양을 줄이고, 채소로 포만감을 채워 목표(${goalCalories}kcal)에 맞춰 보세요. 단백질은 이미 괜찮으니 유지하면 됩니다.`
+          : proteinShort
             ? `Trim extras (rice, sauces, snacks, drinks) but keep lean protein high.`
-            : `Keep protein, trim snacks/drinks/sauces/rice to land near ${goalCalories} kcal.`,
+            : `Trim snacks/drinks/sauces/rice and add veg for satiety to land near ${goalCalories} kcal. Protein looks fine — just maintain it.`,
         predicted_goal_note: ko
           ? `감량·유지는 ‘덜 굶기’가 아니라 목표 칼로리에 맞추는 게 건강에도 유리해요.`
           : `Hitting the calorie goal (not starving) is better for fat loss and health.`,
@@ -363,9 +390,13 @@ function enforceBalancedCoaching<T extends {
         ...next,
         summary: ko ? `섭취가 넉넉해요 — 증량에 유리` : `Intake is ample — helpful for gain`,
         advice: ko
-          ? `칼로리는 충분해요. 단백질 ${goalProtein}g을 꾸준히 채우며 근력 운동과 함께 가세요.`
-          : `Calories look enough — keep hitting ~${goalProtein}g protein with training.`,
-        focus: uniqFocus([ko ? '단백질 유지' : 'Keep protein', ...(next.focus || [])]),
+          ? `칼로리는 충분해요. 근력 운동과 함께 탄수화물·단백질을 고르게 유지하세요.`
+          : `Calories look enough — keep carbs and protein steady with your training.`,
+        focus: uniqFocus([
+          ko ? '운동과 영양' : 'Train & fuel',
+          ko ? '고른 매크로' : 'Balanced macros',
+          ...(next.focus || []),
+        ]),
       }
     }
   }
@@ -378,14 +409,14 @@ function enforceBalancedCoaching<T extends {
         ? `목표보다 조금 적게 먹고 있어요 (약 ${Math.abs(calGap)}kcal)`
         : `A bit under goal (~${Math.abs(calGap)} kcal)`,
       advice: ko
-        ? `조금 부족한 정도는 괜찮아요. 더 줄이지 말고, 단백질과 채소를 지키며 목표(${goalCalories}kcal) 근처에 머무르세요.`
-        : `Mild under is fine — don’t cut further; stay near ${goalCalories} kcal with protein and veggies.`,
+        ? `조금 부족한 정도는 괜찮아요. 더 줄이지 말고, 채소·수분과 함께 목표(${goalCalories}kcal) 근처에 머무르세요.`
+        : `Mild under is fine — don’t cut further; stay near ${goalCalories} kcal with veggies and fluids.`,
       predicted_goal_note: ko
-        ? `무리한 추가 적자보다 목표 근처 + 단백질이 근육·에너지에 더 안전합니다.`
-        : `Near-goal intake + protein is safer for muscle and energy than stacking more deficit.`,
+        ? `무리한 추가 적자보다 목표 근처 + 균형 식사가 근육·에너지에 더 안전합니다.`
+        : `Near-goal intake with a balanced plate is safer for muscle and energy than stacking more deficit.`,
       focus: uniqFocus([
         ko ? '목표 근처 유지' : 'Stay near goal',
-        ko ? '단백질 유지' : 'Keep protein',
+        ko ? '균형 식사' : 'Balanced meals',
         ...(next.focus || []),
       ]),
     }
@@ -399,9 +430,13 @@ function enforceBalancedCoaching<T extends {
         ? `증량 목표 대비 칼로리가 부족해요`
         : `Calories are short of your gain goal`,
       advice: ko
-        ? `하루 약 ${Math.abs(Math.min(0, calGap))}kcal만 더 채워 보세요. 단백질 ${goalProtein}g도 함께.`
-        : `Add about ${Math.abs(Math.min(0, calGap))} kcal/day and keep ~${goalProtein}g protein.`,
-      focus: uniqFocus([ko ? '칼로리 채우기' : 'Add calories', ko ? '단백질' : 'Protein', ...(next.focus || [])]),
+        ? `하루 약 ${Math.abs(Math.min(0, calGap))}kcal만 더 채워 보세요. 운동 전후 탄수화물과 단백질을 함께.`
+        : `Add about ${Math.abs(Math.min(0, calGap))} kcal/day — carbs and protein around training help.`,
+      focus: uniqFocus([
+        ko ? '칼로리 채우기' : 'Add calories',
+        ko ? '운동 연료' : 'Fuel training',
+        ...(next.focus || []),
+      ]),
     }
   }
 
@@ -414,8 +449,8 @@ function enforceBalancedCoaching<T extends {
       advice:
         need > 0
           ? ko
-            ? `단백질이 약 ${need}g 부족해요. 칼로리는 ${band === 'over' ? '줄이되' : '유지하며'} 매 끼 단백질을 우선하세요.`
-            : `About ${need}g short on protein — ${band === 'over' ? 'trim calories but' : 'keep calories steady and'} prioritize protein each meal.`
+            ? `단백질이 약 ${need}g 부족해요. 칼로리는 ${band === 'over' ? '줄이되' : '유지하며'} 매 끼 단백질을 우선하세요. 근력 유지에 중요합니다.`
+            : `About ${need}g short on protein — ${band === 'over' ? 'trim calories but' : 'keep calories steady and'} prioritize protein each meal for muscle.`
           : next.advice,
     }
   }
@@ -751,25 +786,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? { reasoning: { effort: getFastReasoningEffort() } }
         : {}),
       instructions: `My Cal AI Plus coach. No numeric score — balanced, actionable coaching.
-Priority order: (1) health & enough fuel (2) hit THEIR calorie goal sustainably (3) hit protein for muscle (4) steady energy.
-User strings in ${lang}. Specific numbers from JSON. Kind, not preachy.
+Priority: (1) health & enough fuel (2) THEIR calorie goal sustainably (3) protein when short for muscle (4) fiber/veg, energy, sleep, training support.
+User strings in ${lang}. Specific numbers from JSON. Kind, not preachy. Match weight_goal_mode=${mode}.
 
 CRITICAL — calorie math:
 - Days with NO photos are excluded (never 0 kcal).
 - Use projected_daily_* for outlook when projection_usable=true; never invent meal×2/3.
 - projected_daily_protein from meal history only.
-- weight_goal_mode=${mode}: lose = calorie GOAL is already the deficit — aim for THAT goal, not deeper crash.
+- lose = calorie GOAL is already the deficit — aim for THAT goal, not deeper crash.
 - Cite calorie_gap_vs_goal and protein_gap_vs_goal.
 
-CRITICAL — balanced coaching (do all of these):
-- Cover calories AND protein AND energy — never obsess on one if another is worse.
-- intake_health_band=on_target + protein ok → affirm balance; one habit (protein each meal / skip late snacks). Do NOT invent problems.
-- intake_health_band=over (lose/maintain) → trim snacks/drinks/sauces/portions; KEEP protein.
-- intake_health_band=unsafe_under or << safe_calorie_floor(${safeFloor}) → eat UP toward calorie goal + protein; never praise faster loss.
-- protein low → protein foods each meal; if also over calories, say “cut extras, keep protein”.
-- mode=gain and under calories → add food, not only protein powder talk.
+CRITICAL — goal-aware coaching (not protein/fat-loss only):
+- Cover the WORST gap first (calories OR protein OR energy). If protein is already ok, do NOT make every tip about protein.
+- Diversify habits when on track: vegetables/fiber, hydration, sleep, strength training, meal spacing, cooking oils/sauces.
+- lose + protein ok → sustainable near-goal intake, satiety from volume veg + adequate protein, protect muscle with training — not “more chicken only”.
+- lose + protein low → then protein-first (eggs, tofu, fish, yogurt) while staying near calorie goal.
+- gain → calories + carbs around activity + protein for training; not only protein powder talk.
+- maintain → balanced plate (veg + protein + carbs), steady routine.
+- intake_health_band=on_target + protein ok → affirm balance; ONE gentle habit that is NOT always protein.
+- intake_health_band=over (lose/maintain) → trim snacks/drinks/sauces/portions; keep protein if already ok, don’t invent a protein crisis.
+- intake_health_band=unsafe_under or << safe_calorie_floor(${safeFloor}) → eat UP toward calorie goal; never praise faster loss.
 - summary: one honest headline vs goals. advice: 2–4 concrete steps (~280 chars). focus: 2–4 tags.
-- predicted_goal_note: sustainable path for THEIR weight mode.
+- predicted_goal_note: sustainable path for THEIR weight mode (health > crash).
 
 CRITICAL — muscle / outlook:
 - muscle_trend follows protein vs goal; <85% → decrease + protein first.

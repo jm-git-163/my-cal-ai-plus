@@ -244,36 +244,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       instructions: `You are My Cal AI Plus next-action coach — NOT a menu generator.
 Decide whether the user should EAT, SNACK, drink WATER, or do a short NON-FOOD activity.
 Be concise. All user-facing strings must be in ${lang}.
-Health first: never push fasting when the user is under-fueled or protein-starved.
+Health first: never push fasting when under-fueled or protein-starved.
+Match weight_goal_mode — do not make every suggestion “high protein fat-loss food”.
 
 Output fields:
 - meal_slot: localized time slot label (아침/점심/저녁/간식 or Breakfast/…)
 - situation_note: 1 honest sentence about NOW
-- remaining_note: short leftover kcal/protein line
+- remaining_note: short leftover kcal/protein/carbs line when useful
 - options: 2 or 3 items with kind (meal|snack|hydrate|rest), title, macros, reason
-- tip: one gentle tip
+- tip: one gentle tip (vary: veg/fiber, hydration, training fuel, sleep — not always protein)
 
 Core philosophy:
-- Sustainable fat loss > skipping meals all day.
+- Sustainable goals > skipping meals all day OR protein-only tunnel vision.
 - Saying “don’t eat yet” is OK only when prefer_skip_food is true AND prioritize_nourishment is false.
 - kind=rest means a concrete activity (walk, stretch, breathing), not “starve”.
 
 Decision rules (follow strictly):
 0) If prioritize_nourishment OR protein_still_low with ample remaining calories:
-   - FIRST option MUST be kind=meal or kind=snack that is protein-forward (eggs, tofu, chicken, Greek yogurt, fish).
-   - Do NOT lead with hydrate/rest. Skipping food is unsafe here.
+   - FIRST option MUST be kind=meal or kind=snack that is protein-forward (eggs, tofu, chicken, Greek yogurt, fish) — muscle protection.
+   - Still include veg/volume when possible. Do NOT lead with hydrate/rest.
 1) Else if prefer_skip_food OR over_calories OR just_ate_within_90min OR (late_night AND remaining calories < 450):
    - FIRST option MUST be kind=hydrate OR kind=rest.
    - Prefer actionable titles (walk / water+breathing / stretch).
    - At most ONE light snack as alternative; NO full meal as first choice.
 2) Else if low_remaining_calories OR near_goal_calories with weight_goal_mode=lose (and protein already OK):
-   - Lead with hydrate/rest; optional light snack only if still hungry.
+   - Lead with hydrate/rest; optional light veggie or dairy snack only if still hungry.
 3) Else if real meal_slot AND calories remaining ample AND not just_ate:
-   - Normal meal or protein-forward snack first.
-4) weight_goal_mode lose → prefer volume + protein, not zero food; gain → fuller meals; maintain → balanced.
-5) Late night → hydrate + calm rest unless prioritize_nourishment.
-6) hydrate/rest macros ≈0. Never shame.
-7) Always return 2 or 3 options.`,
+   - Offer a BALANCED meal/snack for their mode (not only chicken breast):
+     · lose → volume veg + moderate protein + controlled carbs
+     · gain → fuller plate with carbs + protein for training
+     · maintain → mixed plate (veg + protein + carbs)
+4) Late night → hydrate + calm rest unless prioritize_nourishment.
+5) hydrate/rest macros ≈0. Never shame.
+6) Always return 2 or 3 options with variety in titles/reasons.`,
       text: {
         format: {
           type: 'json_schema',
@@ -344,14 +347,16 @@ Decision rules (follow strictly):
         const needP = Math.max(15, Math.round(remaining.protein))
         options.unshift({
           kind: 'meal',
-          title: ko ? '고단백 간단식 (계란·두부·닭가슴살)' : 'Simple high-protein plate (eggs, tofu, chicken)',
+          title: ko
+            ? '단백질+채소 간단식 (계란·두부·샐러드)'
+            : 'Protein + veg plate (eggs, tofu, salad)',
           calories: Math.min(450, Math.max(250, Math.round(remaining.calories * 0.35))),
           protein: Math.min(40, Math.max(20, needP)),
-          carbs: 20,
-          fat: 10,
+          carbs: Math.min(35, Math.max(15, Math.round(remaining.carbs * 0.25) || 20)),
+          fat: Math.min(15, Math.max(8, Math.round(remaining.fat * 0.25) || 10)),
           reason: ko
-            ? '지금은 굶기보다 단백질을 채워 근육·에너지를 지키는 게 감량에도 유리해요.'
-            : 'Fuel with protein now — protecting muscle and energy beats skipping meals.',
+            ? '지금은 굶기보다 단백질과 채소를 채워 근육·에너지를 지키는 게 감량에도 유리해요.'
+            : 'Fuel with protein and veg now — protecting muscle and energy beats skipping meals.',
         })
         while (options.length > 3) options.pop()
       }
