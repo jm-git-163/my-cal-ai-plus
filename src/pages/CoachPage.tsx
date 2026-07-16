@@ -264,11 +264,11 @@ export function CoachPage() {
                       >
                         {kindLabel}
                       </span>
-                      <h3 className="font-display text-lg font-semibold text-brand-ink dark:text-white">
+                      <h3 className="font-display text-lg font-semibold leading-snug text-brand-ink text-balance-ko dark:text-white">
                         {opt.title}
                       </h3>
                     </div>
-                    <p className="tabular font-display text-xl font-bold text-brand-green">
+                    <p className="tabular shrink-0 font-display text-xl font-bold text-brand-green">
                       {opt.calories}
                       <span className="ml-1 text-sm font-semibold text-brand-muted">kcal</span>
                     </p>
@@ -282,7 +282,9 @@ export function CoachPage() {
                       })}
                     </p>
                   )}
-                  <p className="text-sm leading-relaxed text-brand-ink/90 dark:text-white/75">{opt.reason}</p>
+                  <p className="text-sm leading-relaxed text-brand-ink/90 text-balance-ko dark:text-white/75">
+                    {opt.reason}
+                  </p>
                 </article>
               )
             })}
@@ -298,26 +300,32 @@ export function CoachPage() {
       {coach && !loading && (
         <div className="space-y-4">
           <div className="glass-card space-y-4 p-5 sm:p-6">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-brand-muted dark:text-white/50">{t.coach.score}</p>
-                <p className="font-display text-4xl font-bold text-brand-green">{coach.score}</p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div className="shrink-0">
+                <p className="text-nowrap-keep text-sm font-medium text-brand-muted dark:text-white/50">
+                  {t.coach.score}
+                </p>
+                <p className="tabular font-display text-4xl font-bold text-brand-green">{coach.score}</p>
               </div>
-              <p className="max-w-xs text-right text-sm text-brand-muted dark:text-white/55">
+              <p className="min-w-0 flex-1 text-balance-ko text-sm leading-relaxed text-brand-muted sm:max-w-sm sm:text-right dark:text-white/55">
                 {coach.predicted_goal_note}
               </p>
             </div>
-            <div>
-              <h2 className="font-display text-xl font-semibold text-brand-ink dark:text-white">{coach.summary}</h2>
-              <p className="mt-2 text-brand-ink/90 dark:text-white/80">{coach.advice}</p>
+            <div className="text-balance-ko">
+              <h2 className="font-display text-xl font-semibold leading-snug text-brand-ink dark:text-white">
+                {coach.summary}
+              </h2>
+              <p className="mt-2 leading-relaxed text-brand-ink/90 dark:text-white/80">{coach.advice}</p>
             </div>
             <div>
-              <p className="mb-2 text-sm font-medium text-brand-muted dark:text-white/50">{t.coach.focus}</p>
+              <p className="mb-2 text-nowrap-keep text-sm font-medium text-brand-muted dark:text-white/50">
+                {t.coach.focus}
+              </p>
               <div className="flex flex-wrap gap-2">
                 {coach.focus.map((f) => (
                   <span
                     key={f}
-                    className="rounded-xl bg-brand-green-soft px-3 py-1 text-xs font-semibold text-brand-green dark:bg-brand-green/20"
+                    className="rounded-xl bg-brand-green-soft px-3 py-1 text-xs font-semibold text-brand-green text-balance-ko dark:bg-brand-green/20"
                   >
                     {f}
                   </span>
@@ -346,47 +354,63 @@ export function CoachPage() {
               <div className="grid gap-3 sm:grid-cols-3">
                 {coach.weight_trend && (
                   <article className="glass-card flex flex-col gap-2 p-4">
-                    <p className="text-sm font-medium text-brand-muted dark:text-white/50">{t.coach.weight}</p>
+                    <p className="text-sm font-medium text-brand-muted text-balance-ko dark:text-white/50">
+                      {t.coach.weight}
+                    </p>
                     <span
                       className={`w-fit rounded-lg px-2 py-0.5 text-[11px] font-semibold ${directionTone(coach.weight_trend.direction)}`}
                     >
                       {directionLabel(t, 'weight', coach.weight_trend.direction)}
                     </span>
                     {coach.weight_trend.estimate_4w && (
-                      <p className="font-display text-lg font-bold text-brand-ink dark:text-white">
+                      <p className="font-display text-lg font-bold leading-snug text-brand-ink text-balance-ko dark:text-white">
                         {coach.weight_trend.estimate_4w}
                       </p>
                     )}
-                    <p className="text-xs text-brand-muted dark:text-white/55">{t.coach.estimate4w}</p>
-                    <p className="text-sm text-brand-ink/90 dark:text-white/75">{coach.weight_trend.explanation}</p>
+                    <p className="text-nowrap-keep text-xs text-brand-muted dark:text-white/55">
+                      {t.coach.estimate4w}
+                    </p>
+                    <p className="text-sm leading-relaxed text-brand-ink/90 text-balance-ko dark:text-white/75">
+                      {coach.weight_trend.explanation}
+                    </p>
                   </article>
                 )}
                 {coach.muscle_trend && (
                   <article className="glass-card flex flex-col gap-2 p-4">
-                    <p className="text-sm font-medium text-brand-muted dark:text-white/50">{t.coach.muscle}</p>
+                    <p className="text-sm font-medium text-brand-muted text-balance-ko dark:text-white/50">
+                      {t.coach.muscle}
+                    </p>
                     <span
                       className={`w-fit rounded-lg px-2 py-0.5 text-[11px] font-semibold ${directionTone(coach.muscle_trend.direction)}`}
                     >
                       {directionLabel(t, 'muscle', coach.muscle_trend.direction)}
                     </span>
                     {coach.muscle_trend.estimate_4w && (
-                      <p className="font-display text-lg font-bold text-brand-ink dark:text-white">
+                      <p className="font-display text-lg font-bold leading-snug text-brand-ink text-balance-ko dark:text-white">
                         {coach.muscle_trend.estimate_4w}
                       </p>
                     )}
-                    <p className="text-xs text-brand-muted dark:text-white/55">{t.coach.estimate4w}</p>
-                    <p className="text-sm text-brand-ink/90 dark:text-white/75">{coach.muscle_trend.explanation}</p>
+                    <p className="text-nowrap-keep text-xs text-brand-muted dark:text-white/55">
+                      {t.coach.estimate4w}
+                    </p>
+                    <p className="text-sm leading-relaxed text-brand-ink/90 text-balance-ko dark:text-white/75">
+                      {coach.muscle_trend.explanation}
+                    </p>
                   </article>
                 )}
                 {coach.energy_trend && (
                   <article className="glass-card flex flex-col gap-2 p-4">
-                    <p className="text-sm font-medium text-brand-muted dark:text-white/50">{t.coach.energy}</p>
+                    <p className="text-sm font-medium text-brand-muted text-balance-ko dark:text-white/50">
+                      {t.coach.energy}
+                    </p>
                     <span
                       className={`w-fit rounded-lg px-2 py-0.5 text-[11px] font-semibold ${directionTone(coach.energy_trend.direction)}`}
                     >
                       {directionLabel(t, 'energy', coach.energy_trend.direction)}
                     </span>
-                    <p className="text-sm text-brand-ink/90 dark:text-white/75">{coach.energy_trend.explanation}</p>
+                    <p className="text-sm leading-relaxed text-brand-ink/90 text-balance-ko dark:text-white/75">
+                      {coach.energy_trend.explanation}
+                    </p>
                   </article>
                 )}
               </div>
@@ -401,19 +425,25 @@ export function CoachPage() {
               {coach.outlook_2w && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-brand-green">{t.coach.week2}</p>
-                  <p className="mt-1 text-sm text-brand-ink dark:text-white/80">{coach.outlook_2w}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-brand-ink text-balance-ko dark:text-white/80">
+                    {coach.outlook_2w}
+                  </p>
                 </div>
               )}
               {coach.outlook_4w && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-brand-green">{t.coach.week4}</p>
-                  <p className="mt-1 text-sm text-brand-ink dark:text-white/80">{coach.outlook_4w}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-brand-ink text-balance-ko dark:text-white/80">
+                    {coach.outlook_4w}
+                  </p>
                 </div>
               )}
               {coach.outlook_8w && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-brand-green">{t.coach.week8}</p>
-                  <p className="mt-1 text-sm text-brand-ink dark:text-white/80">{coach.outlook_8w}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-brand-ink text-balance-ko dark:text-white/80">
+                    {coach.outlook_8w}
+                  </p>
                 </div>
               )}
             </section>

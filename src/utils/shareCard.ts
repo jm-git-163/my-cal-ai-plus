@@ -45,39 +45,67 @@ function wrapByWidth(
   maxWidth: number,
   maxLines: number,
 ): string[] {
-  const chars = [...text]
+  // Prefer wrapping at spaces / punctuation so Korean phrases stay intact.
+  const tokens = text.match(/\S+\s*|\s+/g) ?? [text]
   const lines: string[] = []
   let line = ''
 
-  for (let i = 0; i < chars.length; i++) {
-    const ch = chars[i]
-    const test = line + ch
+  const pushLine = (next: string) => {
+    lines.push(line)
+    line = next
+  }
+
+  for (const token of tokens) {
+    const test = line + token
     if (ctx.measureText(test).width <= maxWidth) {
       line = test
       continue
     }
-    if (line) {
-      lines.push(line)
-      line = ch.trimStart()
+    if (line.trim()) {
+      pushLine('')
+      // token itself may be longer than maxWidth — fall back to grapheme wrap
+      if (ctx.measureText(token.trim()).width > maxWidth) {
+        const chars = [...token.trim()]
+        let chunk = ''
+        for (const ch of chars) {
+          if (ctx.measureText(chunk + ch).width > maxWidth && chunk) {
+            lines.push(chunk)
+            chunk = ch
+            if (lines.length >= maxLines) break
+          } else {
+            chunk += ch
+          }
+        }
+        line = chunk
+      } else {
+        line = token.trimStart()
+      }
     } else {
-      lines.push(ch)
-      line = ''
+      // Single oversized token
+      const chars = [...token]
+      let chunk = ''
+      for (const ch of chars) {
+        if (ctx.measureText(chunk + ch).width > maxWidth && chunk) {
+          lines.push(chunk)
+          chunk = ch
+          if (lines.length >= maxLines) break
+        } else {
+          chunk += ch
+        }
+      }
+      line = chunk
     }
     if (lines.length >= maxLines) {
-      // Ellipsis on last line if leftover remains
-      const rest = chars.slice(i + (line === ch ? 1 : 0)).join('')
-      if (rest || line) {
-        let last = lines[lines.length - 1]
-        while (last.length > 1 && ctx.measureText(`${last}…`).width > maxWidth) {
-          last = [...last].slice(0, -1).join('')
-        }
-        lines[lines.length - 1] = `${last}…`
+      let last = lines[lines.length - 1]
+      while (last.length > 1 && ctx.measureText(`${last}…`).width > maxWidth) {
+        last = [...last].slice(0, -1).join('')
       }
-      return lines
+      lines[lines.length - 1] = last.endsWith('…') ? last : `${last}…`
+      return lines.slice(0, maxLines)
     }
   }
-  if (line && lines.length < maxLines) lines.push(line)
-  return lines
+  if (line.trim() && lines.length < maxLines) lines.push(line.trimEnd())
+  return lines.slice(0, maxLines)
 }
 
 async function ensureFonts() {

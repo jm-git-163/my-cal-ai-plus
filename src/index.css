@@ -22,7 +22,7 @@ body,
 
 body {
   margin: 0;
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: 'DM Sans', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
   color: #12151c;
   background:
     radial-gradient(ellipse 70% 40% at 0% 0%, rgba(34, 160, 107, 0.18), transparent 60%),
@@ -30,6 +30,10 @@ body {
     #e6f5ec;
   -webkit-font-smoothing: antialiased;
   font-feature-settings: 'tnum' 1;
+  /* Korean: wrap at word/phrase boundaries, not mid-syllable ("점|수", "기대됩니|다"). */
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  line-break: strict;
 }
 
 html.dark body {
@@ -40,6 +44,19 @@ html.dark body {
 @layer utilities {
   .tabular {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Short labels / chips that must stay on one line */
+  .text-nowrap-keep {
+    white-space: nowrap;
+    word-break: keep-all;
+  }
+
+  /* Prose blocks: prefer phrase wraps, never mid-Hangul */
+  .text-balance-ko {
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    line-break: strict;
   }
 }
 

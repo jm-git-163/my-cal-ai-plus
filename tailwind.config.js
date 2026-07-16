@@ -18,8 +18,22 @@ export default {
         },
       },
       fontFamily: {
-        display: ['Outfit', 'system-ui', 'sans-serif'],
-        sans: ['DM Sans', 'system-ui', 'sans-serif'],
+        display: [
+          'Outfit',
+          'Noto Sans KR',
+          'Apple SD Gothic Neo',
+          'Malgun Gothic',
+          'system-ui',
+          'sans-serif',
+        ],
+        sans: [
+          'DM Sans',
+          'Noto Sans KR',
+          'Apple SD Gothic Neo',
+          'Malgun Gothic',
+          'system-ui',
+          'sans-serif',
+        ],
       },
       borderRadius: {
         card: '24px',
